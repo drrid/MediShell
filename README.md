@@ -11,7 +11,7 @@ MediShell is a command-line based patient management system designed for medical
 * Dark mode toggle for better visibility
 
 
-Usage
+## Usage
 Once you run the application, you will be presented with the main interface containing the interactive calendar, patient table, and encounter table.
 
 Use the keyboard shortcuts to navigate and perform various actions:
