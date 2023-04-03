@@ -1,0 +1,59 @@
+#app_grid {
+  layout: grid;
+  grid-size: 1 2;
+  row-span: 2;
+  grid-rows: 8% 92%;
+}
+
+/* Inputs  //////////////////////////////////////////////////////////////////////////////////////////////////*/
+#fname {
+  width: 1fr;
+}
+#lname {
+  width: 1fr;
+}
+#phone {
+  width: 1fr;
+}
+#dob {
+  width: 1fr;
+}
+#addpatient {
+  width: 1fr;
+}
+#updatepatient {
+  width: 1fr;
+}
+/* /////////////////////////////////////////////////////////////////////////////////////////////////////////// */
+
+
+#cal_table {
+  width: 7fr;
+  /* border: solid rgb(5, 189, 221); */
+}
+
+#tables {
+  width: 3fr;
+  /* border: solid rgb(5, 189, 221); */
+}
+
+#pt_table {
+  height: 3fr;
+  /* border: solid rgb(221, 196, 5); */
+}
+
+#enc_table {
+  height: 3fr;
+  /* border: solid rgb(221, 196, 5); */
+}
+
+#notes {
+  height: 1fr;
+  /* border: solid rgb(221, 196, 5); */
+}
+
+#feedback {
+  height: 1fr;
+  /* border: solid rgb(221, 196, 5); */
+}
+
