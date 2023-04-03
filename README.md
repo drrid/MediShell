@@ -16,10 +16,10 @@ Once you run the application, you will be presented with the main interface cont
 
 Use the keyboard shortcuts to navigate and perform various actions:
 
-F5: Clear all input fields
-F2: Modify the selected patient's information
-F9: Toggle dark mode
-Ctrl+Left: Move to the previous week
-Ctrl+Right: Move to the next week
-Ctrl+Delete: Delete the selected encounter
-Space: Select an empty appointment slot or patient record
+* F5: Clear all input fields
+* F2: Modify the selected patient's information
+* F9: Toggle dark mode
+* Ctrl+Left: Move to the previous week
+* Ctrl+Right: Move to the next week
+* Ctrl+Delete: Delete the selected encounter
+* Space: Select an empty appointment slot or patient record
