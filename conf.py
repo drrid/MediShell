@@ -19,7 +19,7 @@ uri = os.getenv('URI')
 
 engine = db.create_engine(f'mysql+pymysql://root:{password}@{uri}')
 Base = declarative_base()
-db_session = db.orm.sessionmaker(bind=engine, autocommit=True)
+db_session = db.orm.sessionmaker(bind=engine)
 session = db_session()
 
 # Encounter Class -----------------------------------------------------------------------------------------------------------
