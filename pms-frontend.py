@@ -63,7 +63,7 @@ class Calendar(Screen):
     BINDINGS = [("f5", "clear_all()", "Clear"),
                 ("f2", "modify_patient()", "Modify Patient"),
                 ("f9", "toggle_dark()", "Toggle Dark Mode")]
-
+ 
     week_index = reactive(0)
     selected_value = reactive([])
     selected_value2 = reactive([])
@@ -99,7 +99,6 @@ class Calendar(Screen):
     def log_error(self, message):
         self.query_one('#feedback').update(f'[bold red]{str(message)}')
 
-
     def on_mount(self):
         self.change_week(self.week_index)
         self.create_find_pt()
@@ -111,35 +110,35 @@ class Calendar(Screen):
             inp.value = ''
         self.show_patients()
 
-
     def action_modify_patient(self):
         try:
             table = self.query_one('#pt_table')
             row = table.cursor_cell.row
-            patient_id = table.data[row][0]
-            self.query_one('#fname').value = table.data[row][1]
-            self.query_one('#lname').value = table.data[row][2]
-            self.query_one('#phone').value = table.data[row][4]
-            self.query_one('#dob').value = table.data[row][3]
-            self.pt_id = int(table.data[row][0])
+            patient_id, fname, lname, dob, phone, *_ = table.data[row]
+            self.query_one('#fname').value = fname
+            self.query_one('#lname').value = lname
+            self.query_one('#phone').value = phone
+            self.query_one('#dob').value = dob
+            self.pt_id = int(patient_id)
         except Exception as e:
-            self.screen.log_error(e)
+            self.log_error(e)
+
 
     def on_input_changed(self, event: Input.Changed):
         if event.sender.id in ['fname', 'lname', 'phone']:
             self.show_patients()
 
+
     def show_encounters(self, pt_id):
         try:
-            if pt_id:
-                enc_table = self.create_find_enc()
-                selected_pts_list2 = conf.select_all_pt_encounters(int(pt_id))
-                if selected_pts_list2:
-                    rows = csv.reader(io.StringIO("\n".join([str(r) for r in selected_pts_list2])))
-                    for ro in rows:
-                        enc_table.add_row(*ro, height=int(len(ro[2])/20+1))
+            enc_table = self.create_find_enc()
+            selected_pts_list2 = conf.select_all_pt_encounters(int(pt_id))
+            if selected_pts_list2:
+                rows = csv.reader(io.StringIO("\n".join([str(r) for r in selected_pts_list2])))
+                for ro in rows:
+                    enc_table.add_row(*ro, height=int(len(ro[2])/20+1))
         except Exception as e:
-            self.screen.log_error(e)
+            self.log_error(e)
 
 
     def show_patients(self):
@@ -153,11 +152,11 @@ class Calendar(Screen):
             else:
                 self.query_one('#phone').value = ''
 
-            selected_pts_list = conf.select_all_starts_with_all_fields(fname, lname, phone)
+            selected_pts_list = conf.select_all_starts_with(first_name=fname, last_name=lname, phone=phone)
             if selected_pts_list:
                 table.add_rows(csv.reader(io.StringIO("\n".join([str(r) for r in selected_pts_list]))))
         except Exception as e:
-            self.screen.log_error(e)
+            self.log_error(e)
 
 
     def on_input_submitted(self, event: Input.Submitted):
@@ -169,21 +168,17 @@ class Calendar(Screen):
                 encounter_id = int(enc_table.data[enc_table.cursor_cell.row][0])
                 pt_id = int(pt_table.data[pt_table.cursor_cell.row][0])
 
+                input_to_modify = self.query_one('#notes').value
+
                 if cursor == 2:
-                    note = self.query_one('#notes').value
-                    conf.update_note(encounter_id, note)
-                    self.show_encounters(pt_id)
-                    self.query_one('#notes').value = ''
+                    conf.update_encounter(encounter_id, note=str(input_to_modify))
                 if cursor == 3:
-                    cost = int(self.query_one('#notes').value)
-                    conf.update_payment(encounter_id, cost)
-                    self.show_encounters(pt_id)
-                    self.query_one('#notes').value = ''
+                    conf.update_encounter(encounter_id, payment=int(input_to_modify))
                 if cursor == 4:
-                    fee = int(self.query_one('#notes').value)
-                    conf.update_fee(encounter_id, fee)
-                    self.show_encounters(pt_id)
-                    self.query_one('#notes').value = ''    
+                    conf.update_encounter(encounter_id, treatment_cost=int(input_to_modify))
+                
+                self.show_encounters(pt_id)
+                self.query_one('#notes').value = ''  
 
             if event.sender.id in ['fname', 'lname', 'phone', 'dob']:
                 table = self.query_one('#pt_table')
@@ -206,7 +201,7 @@ class Calendar(Screen):
                     self.selected_value2 = [0, 0, 0]
                     self.submit_patient()
         except Exception as e:
-            self.screen.log_error(e)
+            self.log_error(e)
 
 
     def on_button_pressed(self, event: Button.Pressed):
@@ -238,7 +233,7 @@ class Calendar(Screen):
                 self.query_one('#feedback').update(f'Patient updated: {fname} {lname}')
                 self.show_patients()
         except Exception as e:
-            self.screen.log_error(e)
+            self.log_error(e)
 
 
     def change_week(self, week):
@@ -268,7 +263,7 @@ class Calendar(Screen):
                 for ro in rows:
                     table.add_row(*ro, height=2)
         except Exception as e:
-            self.screen.log_error(e)
+            self.log_error(e)
 
 
     def on_key(self, event: events.Key):
@@ -308,7 +303,7 @@ class Calendar(Screen):
                     self.selected_value2 = [table.cursor_cell.row, table.cursor_cell.column, selected_v2]
                     self.submit_patient()
         except Exception as e:
-            self.screen.log_error(e)
+            self.log_error(e)
 
 
     def create_find_pt(self):
@@ -316,12 +311,12 @@ class Calendar(Screen):
             table = self.query_one('#pt_table')
             table.clear()
             table.columns = []
-            PT_CLMN = [['ID', 4], ['First Name', 18], ['Last Name', 18], ['Date of Birth', 14], ['Phone', 10]]
+            PT_CLMN = [['ID', 3], ['First Name', 13], ['Last Name', 13], ['Date of Birth', 12], ['Phone', 10]]
             for c in PT_CLMN:
                 table.add_column(f'{c[0]}', width=c[1])
             return table
         except Exception as e:
-            self.screen.log_error(e)
+            self.log_error(e)
 
 
     def create_find_enc(self):
@@ -329,12 +324,12 @@ class Calendar(Screen):
             table = self.query_one('#enc_table')
             table.clear()
             table.columns = []
-            PT_CLMN = [['ID', 4], ['Encounter', 20], ['Note', 20], ['Payment', 10], ['Trt Cost', 10]]
+            PT_CLMN = [['ID', 3], ['Encounter', 20], ['Note', 15], ['Payment', 7], ['Fee', 7]]
             for c in PT_CLMN:
                 table.add_column(f'{c[0]}', width=c[1])
             return table
         except Exception as e:
-            self.screen.log_error(e)
+            self.log_error(e)
 
 
     def submit_patient(self):
@@ -351,7 +346,7 @@ class Calendar(Screen):
                 self.change_week(self.week_index)
                 self.show_encounters(table.data[0][0])
         except Exception as e:
-            self.screen.log_error(e)
+            self.log_error(e)
 
 
     def calculate_rdvtime(self):
@@ -370,7 +365,7 @@ class Calendar(Screen):
             hour, minute = INV_DICT_ROW.get(self.selected_value[0]).split(':')
             return dt.datetime(encounter_date.year, encounter_date.month, encounter_date.day, int(hour), int(minute))
         except Exception as e:
-            self.screen.log_error(e)
+            self.log_error(e)
 
 
 # ------------------------------------------------------------------------Main App-----------------------------------------------------------------------------------------

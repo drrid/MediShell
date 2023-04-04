@@ -4,10 +4,6 @@ from sqlalchemy.orm import relationship
 import datetime as dt
 from datetime import timedelta
 import numpy as np
-
-from dateutil import parser
-import csv
-import io
 from dotenv import load_dotenv
 import os
 
@@ -15,7 +11,6 @@ import os
 load_dotenv()
 password = os.getenv('DB_PASSWORD')
 uri = os.getenv('URI')
-
 
 engine = db.create_engine(f'mysql+pymysql://root:{password}@{uri}')
 Base = declarative_base()
@@ -58,24 +53,17 @@ def init_db():
     Base.metadata.bind = engine
 
 
-def update_patient(patient_id, first_name=None, last_name=None, phone=None, date_of_birth=None):
+def update_patient(patient_id, **kwargs):
     try:
         patient_to_update = session.query(patient).filter(patient.patient_id == patient_id).one()
 
-        if first_name is not None:
-            patient_to_update.first_name = first_name
-        if last_name is not None:
-            patient_to_update.last_name = last_name
-        if phone is not None:
-            patient_to_update.phone = phone
-        if date_of_birth is not None:
-            patient_to_update.date_of_birth = date_of_birth
+        for key, value in kwargs.items():
+            setattr(patient_to_update, key, value)
 
         session.commit()
     except Exception as e:
         print(e)
         session.rollback()
-
 
 def save_to_db(record):
     try:
@@ -85,25 +73,9 @@ def save_to_db(record):
         session.rollback()
         print(e) 
 
-def update_note(id, note):
+def update_encounter(id, **kwargs):
     try:
-        session.query(Encounter).filter(Encounter.encounter_id == id).update({Encounter.note: note})
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        print(e)
-
-def update_fee(id, fee):
-    try:
-        session.query(Encounter).filter(Encounter.encounter_id == id).update({Encounter.treatment_cost: fee})
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        print(e)
-
-def update_payment(id, payment):
-    try:
-        session.query(Encounter).filter(Encounter.encounter_id == id).update({Encounter.payment: payment})
+        session.query(Encounter).filter(Encounter.encounter_id == id).update(kwargs)
         session.commit()
     except Exception as e:
         session.rollback()
@@ -142,29 +114,10 @@ def select_all_contains(first_name):
     except Exception as e:
         print(e)
 
-def select_all_starts_with(q):
+def select_all_starts_with(**kwargs):
     try:
-        return [r for r in session.query(patient).filter(patient.first_name.startswith(q))]
-    except Exception as e:
-        print(e)
-
-def select_all_starts_with_all_fields(fname, lname, phone):
-    try:
-        return [r for r in session.query(patient).filter(patient.first_name.startswith(fname),
-                                                        patient.last_name.startswith(lname),
-                                                        patient.phone.startswith(phone))]
-    except Exception as e:
-        print(e)
-
-def select_all_starts_with_phone(q):
-    try:
-        return [r for r in session.query(patient).filter(patient.phone.startswith(q))]
-    except Exception as e:
-        print(e)
-
-def select_all_starts_with_lname(q):
-    try:
-        return [r for r in session.query(patient).filter(patient.last_name.startswith(q))]
+        filters = [getattr(patient, key).startswith(value) for key, value in kwargs.items()]
+        return [r for r in session.query(patient).filter(*filters)]
     except Exception as e:
         print(e)
 
