@@ -71,6 +71,13 @@ class Calendar(Screen):
     
     def compose(self):
         yield Footer()
+        self.calendar_table = CalTable(fixed_columns=1, zebra_stripes=True, id='cal_table')
+        self.encounter_table = EncounterTable(fixed_columns=1, zebra_stripes=True, id='enc_table')
+        self.patient_table = PatientTable(fixed_columns=1, zebra_stripes=True, id='pt_table')
+
+        # self.widget1.styles.background = 'teal'
+        # self.widget1.styles.border = ("heavy", "Teal")
+        # self.widget1.border_title = 'Cal'
         yield Container(
                 Vertical(Horizontal(
                         Input('', placeholder='First Name', id='fname'),
@@ -83,12 +90,12 @@ class Calendar(Screen):
                 ),
                 Vertical(
                     Horizontal(
-                        Vertical(PatientTable(fixed_columns=1, zebra_stripes=True, id='pt_table'),
-                                EncounterTable(fixed_columns=1, zebra_stripes=True, id='enc_table'),
+                        Vertical(self.patient_table,
+                                self.encounter_table,
                                 Input(placeholder='Notes...', id='notes'), 
                                 Static(id='feedback'),
                                 id='tables'),
-                                CalTable(fixed_columns=1, zebra_stripes=True, id='cal_table'),
+                                self.calendar_table,
                         id='tables_cnt'
                     ),
                     id='lower_cnt'
@@ -101,6 +108,7 @@ class Calendar(Screen):
 
 
     def on_mount(self):
+        # pass
         self.change_week(self.week_index)
         self.create_find_pt()
         self.create_find_enc()
