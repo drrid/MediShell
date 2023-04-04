@@ -1,6 +1,9 @@
 # TerminalPMS
 TerminalPMS is a command-line based patient management system designed for medical professionals to manage patient appointments and related information. With its user-friendly interface, TerminalPMS simplifies the process of scheduling appointments, tracking patient details, and maintaining records of patient encounters.
 
+![Alt text](/dark-mode.jpg?raw=true "Dark Mode")
+![Alt text](/light-mode.jpg?raw=true "Light Mode")
+
 ## Features
 * Interactive calendar for easy appointment scheduling
 * Patient data management
