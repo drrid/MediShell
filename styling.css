@@ -5,6 +5,37 @@
   grid-rows: 8% 92%;
 }
 
+/* .datatable--fixed {
+  background: teal;
+}
+
+.datatable--header {
+  background: teal;
+} */
+
+/* $scrollbar-background: teal; */
+/* $primary: #064D51; */
+$primary: teal;
+$primary-lighten-1: #198c8f;
+
+/* .footer--highlight {
+  background: teal;
+} */
+
+.footer--description {
+  background: teal;
+}
+
+.footer--key {
+  background: teal;
+}
+/* $surface: #ffd8ca; */
+
+/* .scrollbar-background {
+  background: teal;
+} */
+
+
 /* Inputs  //////////////////////////////////////////////////////////////////////////////////////////////////*/
 #fname {
   width: 1fr;
