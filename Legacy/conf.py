@@ -6,6 +6,7 @@ from datetime import timedelta
 import numpy as np
 from dotenv import load_dotenv
 import os
+import time as tm
 
 
 load_dotenv()
@@ -214,7 +215,7 @@ def get_weekly_encounters_csv(result):
 
         for i, (x, y) in enumerate(coor_array):
             weekly_matrix[x, y] = patients[i]
-        print(weekly_matrix)
+        # print(weekly_matrix)
         arr2 = weekly_matrix.flatten()
 
         for i, v in enumerate(arr2):
@@ -241,6 +242,15 @@ def calculate_owed_amount(patient_id):
 
 init_db()
 
+
+
+start = tm.time()
+start1, end1 = get_weekly_start_end(0)
+enc = select_week_encounters(start1, end1)
+get_weekly_encounters_csv(enc)
+end = tm.time()
+
+print(end-start)
 
 # patient_id = 1
 # owed_amount = calculate_owed_amount(patient_id)

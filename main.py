@@ -13,7 +13,9 @@ from dateutil import parser
 # Calendar Screen --------------------------------------------------------------------------------------------------------------------------------------------------
 class Calendar(Screen):
 
-    BINDINGS = [("ctrl+right", "next_week", "Next Week")]
+    BINDINGS = [("ctrl+right", "next_week", "Next Week"),
+                ("ctrl+left", "previous_week", "Previous Week")]
+    week_index = reactive(0)
 
     def compose(self):
         self.table = DataTable()
@@ -48,11 +50,21 @@ class Calendar(Screen):
     def on_mount(self):
         self.patient_widget.add_columns('ID', 'First Name', 'Last Name', 'Date of Birth', 'Phone')
         self.encounter_widget.add_columns('ID', 'Encounter', 'Note', 'Payment', 'Fee')
-        self.show_calendar(0)
+        self.show_calendar(self.week_index)
         self.show_patients(first_name='')
 
     def log_error(self, msg):
         self.query_one('#feedback').update(f'[bold red]{str(msg)}')
+
+    def action_next_week(self):
+        self.calendar_widget.clear(columns=True)
+        self.week_index += 1 
+        self.show_calendar(self.week_index)
+
+    def action_previous_week(self):
+        self.calendar_widget.clear(columns=True)
+        self.week_index -= 1 
+        self.show_calendar(self.week_index)
 
     def log_feedback(self, msg):
         self.query_one('#feedback').update(f'[bold teal]{str(msg)}')

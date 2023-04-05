@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import os
 from sqlalchemy import and_, func
 from datetime import date, time, timedelta
+import time as tm
 
 
 load_dotenv()
@@ -142,6 +143,7 @@ def generate_schedule(week_index):
     # Find the nearest Saturday (0 = Saturday, 1 = Sunday, etc.)
     days_to_saturday = (5 - today.weekday()) % 7
     start_date = today + timedelta(days=days_to_saturday) + timedelta(weeks=week_index - 1)
+    end_date = start_date + timedelta(days=7)
     
     # Generate time slots
     time_slots = generate_time_slot(9, 0, 20, 21)
@@ -152,43 +154,38 @@ def generate_schedule(week_index):
     days_of_week = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
     schedule.append((" ", *tuple(f"{days_of_week[i]} {start_date.day + i} {start_date.strftime('%B')}" for i in range(7))))
     
-    for time_slot in time_slots:
-        slot_start, slot_end = time_slot
-        encounters_in_slot = ["_"] * 7  # Initialize empty encounters for the week
+    # Fetch all encounters for the whole week
+    encounters = session.query(Encounter, patient).join(patient).filter(
+        and_(
+            Encounter.rdv >= dt.datetime.combine(start_date, time_slots[0][0]),
+            Encounter.rdv < dt.datetime.combine(end_date, time_slots[-1][1]),
+        )
+    ).all()
 
-        for i in range(7):
-            day_start = dt.datetime.combine(start_date + timedelta(days=i), slot_start)
-            day_end = dt.datetime.combine(start_date + timedelta(days=i), slot_end)
-            
-            encounters = session.query(Encounter, patient).join(patient).filter(
-                and_(
-                    Encounter.rdv >= day_start,
-                    Encounter.rdv < day_end
-                )
-            ).all()
-            
-            if encounters:
-                encounter, pat = encounters[0]  # Assuming only one encounter per time slot
-                encounters_in_slot[i] = f"{pat.first_name} {pat.last_name} {encounter.encounter_id} {pat.patient_id}"
-        
+    # Group encounters by time slot
+    encounter_map = {}
+    for encounter, pat in encounters:
+        time_slot_index = (encounter.rdv.hour - 9) * 3 + encounter.rdv.minute // 20
+        day_index = (encounter.rdv.date() - start_date).days
+        encounter_map[(time_slot_index, day_index)] = f"{pat.first_name} {pat.last_name} {encounter.encounter_id} {pat.patient_id}"
+    
+    for i, time_slot in enumerate(time_slots):
+        slot_start, slot_end = time_slot
+        encounters_in_slot = [encounter_map.get((i, j), "_") for j in range(7)]
+
         schedule.append((slot_start.strftime('%H:%M'), *encounters_in_slot))
     
     return schedule
 
 
+
 init_db()
 
 
+# start = tm.time()
+# generate_schedule(1)
+# end = tm.time()
 
-# results = generate_schedule(0)
-# print(results)
-# for r in results:
-#     print(r)
-
-
-# patients = select_all_starts_with(first_name='abd')
-# print(patients)
-# for patient in patients:
-#     print(patient)
+# print(end-start)
 
 
