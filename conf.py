@@ -152,7 +152,7 @@ def generate_schedule(week_index):
     
     # Add days of the week with their respective dates
     days_of_week = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    schedule.append((" ", *tuple(f"{days_of_week[i]} {start_date.day + i} {start_date.strftime('%B')}" for i in range(7))))
+    schedule.append((" ", *tuple(f"{days_of_week[i]} {(start_date + timedelta(days=i)).strftime('%d %B').lstrip('0')}" for i in range(7))))
     
     # Fetch all encounters for the whole week
     encounters = session.query(Encounter, patient).join(patient).filter(
@@ -182,10 +182,10 @@ def generate_schedule(week_index):
 init_db()
 
 
-# start = tm.time()
-# generate_schedule(1)
-# end = tm.time()
+start = tm.time()
+generate_schedule(1)
+end = tm.time()
 
-# print(end-start)
+print(end-start)
 
 
