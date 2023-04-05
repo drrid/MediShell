@@ -75,7 +75,7 @@ class Calendar(Screen):
         self.patient_widget = PatientTable(fixed_columns=1, zebra_stripes=True, id='pt_table')
         self.footer_widget = Footer()
 
-        # self.footer_widget.styles.background = 'teal'
+        self.footer_widget.styles.background = 'teal'
         # self.calendar_widget.styles.background = '#344f58'
 
         yield self.footer_widget

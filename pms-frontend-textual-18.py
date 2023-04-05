@@ -73,10 +73,12 @@ class Calendar(Screen):
         self.calendar_widget = CalTable(fixed_columns=1, zebra_stripes=True, id='cal_table')
         self.encounter_widget = EncounterTable(fixed_columns=1, zebra_stripes=True, id='enc_table')
         self.patient_widget = PatientTable(fixed_columns=1, zebra_stripes=True, id='pt_table')
+        self.footer_widget = Footer()
 
-        # self.calendar_widget.background_colors = 'teal'
+        self.footer_widget.styles.background = 'teal'
+        # self.calendar_widget.styles.background = '#344f58'
 
-        yield Footer()
+        yield self.footer_widget
         yield Container(
                 Vertical(Horizontal(
                         Input('', placeholder='First Name', id='fname'),
@@ -106,7 +108,6 @@ class Calendar(Screen):
         self.query_one('#feedback').update(f'[bold red]{str(message)}')
 
     def on_mount(self):
-        # pass
         self.change_week(self.week_index)
         self.create_find_pt()
         self.create_find_enc()
@@ -259,9 +260,9 @@ class Calendar(Screen):
                 month = calendar.month_abbr[weekday.month]
 
                 if weekday == today_midnight:
-                    table.add_column(f'[bold yellow]{d} {weekday.day} {month}', width=22)
+                    table.add_column(f'[bold]{d} {weekday.day} {month}', width=17)
                 else:
-                    table.add_column(f'[blue]{d} {weekday.day} {month}', width=22)
+                    table.add_column(f'{d} {weekday.day} {month}', width=17)
             
             encounters = conf.select_week_encounters(start_date, end_date)
             csv_rows = conf.get_weekly_encounters_csv(encounters)
