@@ -1,12 +1,12 @@
 from textual.app import App
 from textual.screen import Screen
 from textual.widgets import Static, Footer, Header, Input, DataTable, Button
+from textual.coordinate import Coordinate
 from textual.containers import Container, Horizontal, Vertical
 from textual.reactive import reactive
 from textual import events
 import conf
 import datetime as dt
-import calendar
 from dateutil import parser
 
 
@@ -24,12 +24,9 @@ class Calendar(Screen):
         self.patient_widget = DataTable(id='pt_table')
         self.patient_widget.cursor_type = 'row'
         self.inputs_container = Vertical(Horizontal(
-                                    Input('', placeholder='First Name', id='fname'),
-                                    Input('', placeholder='Last Name', id='lname'),
-                                    Input('', placeholder='Phone', id='phone'),
-                                    Input('', placeholder='Date Of Birth', id='dob'),
-                                    Button('Add', id='addpatient'),
-                                    Button('Update', id='updatepatient'), id='inputs'),
+                                    Input('', placeholder='First Name', id='fname'),Input('', placeholder='Last Name', id='lname'),
+                                    Input('', placeholder='Phone', id='phone'),Input('', placeholder='Date Of Birth', id='dob'),
+                                    Button('Add', id='addpatient'),Button('Update', id='updatepatient'), id='inputs'),
                                 id='upper_cnt')
         self.tables_container = Vertical(
                             Horizontal(
@@ -52,6 +49,22 @@ class Calendar(Screen):
         self.encounter_widget.add_columns('ID', 'Encounter', 'Note', 'Payment', 'Fee')
         self.show_calendar(self.week_index)
         self.show_patients(first_name='')
+
+    def on_input_submitted(self, event: Input.Submitted):
+        try:
+            cursor = self.encounter_widget.cursor_coordinate
+            encounter_id = self.encounter_widget.get_cell_at(Coordinate(cursor.row,0))
+            input_to_modify = self.query_one('#notes').value
+
+            if cursor.column == 2:
+                conf.update_encounter(encounter_id, note=str(input_to_modify))
+            if cursor.column == 3:
+                conf.update_encounter(encounter_id, payment=int(input_to_modify))
+            if cursor.column == 4:
+                conf.update_encounter(encounter_id, treatment_cost=int(input_to_modify))
+            self.encounter_widget.update_cell_at(cursor, input_to_modify)
+        except Exception as e:
+            self.log_error(f"Error updating encounter: {e}")
 
     def on_button_pressed(self, event: Button.Pressed):
         if event.control.id == 'addpatient':
@@ -117,9 +130,9 @@ class Calendar(Screen):
         table.add_columns(*next(schedule))
         table.add_rows(schedule)
 
-    # def on_data_table_cell_selected(self, message: DataTable.CellSelected):
-    #     if message.control.id == 'pt_table':
-    #         self.show_encounters(message.cell_key.)
+    def on_data_table_cell_selected(self, message: DataTable.CellSelected):
+        if message.control.id == 'enc_table':
+            self.query_one('#notes').focus()
 
     def on_data_table_row_selected(self, message: DataTable.RowSelected):
         self.encounter_widget.clear()
