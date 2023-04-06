@@ -13,8 +13,9 @@ from dateutil import parser
 # Calendar Screen --------------------------------------------------------------------------------------------------------------------------------------------------
 class Calendar(Screen):
 
-    BINDINGS = [("ctrl+right", "next_week", "Next Week"),
-                ("ctrl+left", "previous_week", "Previous Week")]
+    BINDINGS = [("ctrl+left", "previous_week", "Previous Week"),
+                ("ctrl+right", "next_week", "Next Week"),
+                ("space", "add_encounter", "Add Encounter")]
     week_index = reactive(0)
 
     def compose(self):
@@ -90,6 +91,38 @@ class Calendar(Screen):
                 return
 
             self.add_patient(first_name, last_name, parsed_phone, parsed_dob)
+
+    def action_add_encounter(self):
+        try:
+            cursor = self.calendar_widget.cursor_coordinate
+            patient_id = self.patient_widget.get_cell_at(Coordinate(self.patient_widget.cursor_coordinate.row, 0))
+
+            self.log_feedback(self.calendar_widget.columns)
+
+            # # Extract date from the column header
+            # encounter_date = self.calendar_widget.get_cell_at(Coordinate(0, self.calendar_widget.cursor_column))
+            # encounter_date = dt.datetime.strptime(encounter_date, "%d-%m-%Y").date()
+
+            # # Extract time from the row header
+            # encounter_time = self.calendar_widget.get_cell_at(Coordinate(cursor.row, 0))
+            # encounter_time = dt.datetime.strptime(encounter_time, "%H:%M").time()
+
+            # # Combine date and time into a single datetime object
+            # encounter_datetime = dt.datetime.combine(encounter_date, encounter_time)
+
+            # # Create and save the new encounter
+            # encounter = conf.encounter(patient_id=patient_id, datetime=encounter_datetime)
+            # conf.save_to_db(encounter)
+            # self.show_calendar(self.week_index)
+            # self.log_feedback("Encounter added successfully.")
+
+            # # Update the encounter_widget to show the new encounter
+            # pt_id = int(self.patient_widget.get_row(self.patient_widget.cursor_coordinate.row)[0])
+            # self.show_encounters(pt_id)
+
+        except Exception as e:
+            self.log_error(f"Error adding encounter: {e}")
+
 
     def add_patient(self, first_name, last_name, phone, date_of_birth):
         try:
