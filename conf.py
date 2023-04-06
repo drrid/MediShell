@@ -12,7 +12,7 @@ load_dotenv()
 password = os.getenv('DB_PASSWORD')
 uri = os.getenv('URI')
 
-engine = db.create_engine(f'mysql+pymysql://root:{password}@{uri}')
+engine = db.create_engine(f'mysql+pymysql://root:{password}@{uri}', pool_recycle=3600)
 Base = declarative_base()
 db_session = db.orm.sessionmaker(bind=engine)
 session = db_session()
@@ -167,7 +167,7 @@ def generate_schedule(week_index):
     for encounter, pat in encounters:
         time_slot_index = (encounter.rdv.hour - 9) * 3 + encounter.rdv.minute // 20
         day_index = (encounter.rdv.date() - start_date).days
-        encounter_map[(time_slot_index, day_index)] = f"{pat.first_name} {pat.last_name} {encounter.encounter_id} {pat.patient_id}"
+        encounter_map[(time_slot_index, day_index)] = f"{pat.first_name} {pat.last_name}"
     
     for i, time_slot in enumerate(time_slots):
         slot_start, slot_end = time_slot

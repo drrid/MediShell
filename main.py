@@ -9,6 +9,8 @@ import conf
 import datetime as dt
 from dateutil import parser
 
+from datetime import date, time, timedelta
+
 
 # Calendar Screen --------------------------------------------------------------------------------------------------------------------------------------------------
 class Calendar(Screen):
@@ -95,33 +97,29 @@ class Calendar(Screen):
     def action_add_encounter(self):
         try:
             cursor = self.calendar_widget.cursor_coordinate
-            patient_id = self.patient_widget.get_cell_at(Coordinate(self.patient_widget.cursor_coordinate.row, 0))
 
-            self.log_feedback(self.calendar_widget.columns)
+            patient_id = int(self.patient_widget.get_cell_at(Coordinate(self.patient_widget.cursor_coordinate.row, 0)))
+            patient_first_name = self.patient_widget.get_cell_at(Coordinate(self.patient_widget.cursor_coordinate.row, 1))
+            patient_last_name = self.patient_widget.get_cell_at(Coordinate(self.patient_widget.cursor_coordinate.row, 2))
 
-            # # Extract date from the column header
-            # encounter_date = self.calendar_widget.get_cell_at(Coordinate(0, self.calendar_widget.cursor_column))
-            # encounter_date = dt.datetime.strptime(encounter_date, "%d-%m-%Y").date()
+            selected_datetime = self.get_datetime_from_cell(self.week_index, cursor.row, cursor.column)
+            conf.save_to_db(conf.Encounter(patient_id=patient_id, rdv=selected_datetime))
 
-            # # Extract time from the row header
-            # encounter_time = self.calendar_widget.get_cell_at(Coordinate(cursor.row, 0))
-            # encounter_time = dt.datetime.strptime(encounter_time, "%H:%M").time()
-
-            # # Combine date and time into a single datetime object
-            # encounter_datetime = dt.datetime.combine(encounter_date, encounter_time)
-
-            # # Create and save the new encounter
-            # encounter = conf.encounter(patient_id=patient_id, datetime=encounter_datetime)
-            # conf.save_to_db(encounter)
-            # self.show_calendar(self.week_index)
-            # self.log_feedback("Encounter added successfully.")
-
-            # # Update the encounter_widget to show the new encounter
-            # pt_id = int(self.patient_widget.get_row(self.patient_widget.cursor_coordinate.row)[0])
-            # self.show_encounters(pt_id)
-
+            self.calendar_widget.update_cell_at(cursor, f'{patient_first_name} {patient_last_name}')
+            self.log_feedback('Encounter added successfully')
         except Exception as e:
             self.log_error(f"Error adding encounter: {e}")
+
+
+    def get_datetime_from_cell(self,week_index, row, column):
+        today = date.today()
+        days_to_saturday = (5 - today.weekday()) % 7
+        start_date = today + timedelta(days=days_to_saturday) + timedelta(weeks=week_index - 1)
+        
+        day = start_date + timedelta(days=column - 1)
+        time_slot_start, _ = conf.generate_time_slot(9, 0, 20, 21)[row]
+        
+        return dt.datetime.combine(day, time_slot_start)
 
 
     def add_patient(self, first_name, last_name, phone, date_of_birth):
