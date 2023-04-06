@@ -53,6 +53,40 @@ class Calendar(Screen):
         self.show_calendar(self.week_index)
         self.show_patients(first_name='')
 
+    def on_button_pressed(self, event: Button.Pressed):
+        if event.control.id == 'addpatient':
+            first_name = self.query_one('#fname').value
+            last_name = self.query_one('#lname').value
+            phone = self.query_one('#phone').value
+            date_of_birth = self.query_one('#dob').value
+
+            # Validate the input values
+            if not first_name or not last_name or not phone or not date_of_birth:
+                self.log_error("Please fill in all fields.")
+                return
+
+            try:
+                parsed_dob = dt.datetime.strptime(date_of_birth, "%Y-%m-%d").date()
+            except ValueError:
+                self.log_error("Invalid date format. Use YYYY-MM-DD.")
+                return
+            try:
+                parsed_phone = int(phone)
+            except ValueError:
+                self.log_error("Invalid phone number.")
+                return
+
+            self.add_patient(first_name, last_name, parsed_phone, parsed_dob)
+
+    def add_patient(self, first_name, last_name, phone, date_of_birth):
+        try:
+            patient = conf.patient(first_name=first_name, last_name=last_name, phone=phone, date_of_birth=date_of_birth)
+            conf.save_to_db(patient)
+            self.log_feedback("Patient added successfully.")
+            self.show_patients(first_name='')
+        except Exception as e:
+            self.log_error(f"Error adding patient: {e}")
+
     def log_error(self, msg):
         self.query_one('#feedback').update(f'[bold red]{str(msg)}')
 

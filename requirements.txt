@@ -1,5 +1,4 @@
-textual==0.5
-numpy
+textual
 python-dateutil
 sqlalchemy
 python-dotenv
