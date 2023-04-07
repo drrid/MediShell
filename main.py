@@ -241,8 +241,9 @@ class Calendar(Screen):
         if message.control.id == 'cal_table':
             cursor = self.calendar_widget.cursor_coordinate
             cursor_value = self.calendar_widget.get_cell_at(cursor)
-            if '_' in cursor_value:
+            if '_' in cursor_value or ':' in cursor_value:
                 self.show_patients(first_name='')
+                self.encounter_widget.clear()
                 return
             
             encounter_time = self.get_datetime_from_cell(self.week_index, cursor.row, cursor.column)
