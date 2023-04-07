@@ -205,7 +205,7 @@ class Calendar(Screen):
 
     def add_patient(self, first_name, last_name, phone, date_of_birth):
         try:
-            patient = conf.Patient(first_name=first_name, last_name=last_name, phone=phone, date_of_birth=date_of_birth)
+            patient = conf.patient(first_name=first_name, last_name=last_name, phone=phone, date_of_birth=date_of_birth)
             conf.save_to_db(patient)
             self.log_feedback("Patient added successfully.")
             self.show_patients(first_name='')
