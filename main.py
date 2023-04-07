@@ -22,7 +22,7 @@ class Calendar(Screen):
 
     def compose(self):
         self.table = DataTable()
-        self.calendar_widget = DataTable(id='cal_table', fixed_columns=1)
+        self.calendar_widget = DataTable(id='cal_table', fixed_columns=1, zebra_stripes=True)
         self.encounter_widget = DataTable(id='enc_table', zebra_stripes=True, fixed_columns=1)
         self.patient_widget = DataTable(id='pt_table', zebra_stripes=True, fixed_columns=1)
         self.patient_widget.cursor_type = 'row'
@@ -69,11 +69,13 @@ class Calendar(Screen):
 
             if cursor.column == 2:
                 conf.update_encounter(encounter_id, note=str(input_to_modify))
+                self.encounter_widget.update_cell_at(cursor, input_to_modify)
             if cursor.column == 3:
                 conf.update_encounter(encounter_id, payment=int(input_to_modify))
+                self.encounter_widget.update_cell_at(cursor, input_to_modify)
             if cursor.column == 4:
                 conf.update_encounter(encounter_id, treatment_cost=int(input_to_modify))
-            self.encounter_widget.update_cell_at(cursor, input_to_modify)
+                self.encounter_widget.update_cell_at(cursor, input_to_modify)
         except Exception as e:
             self.log_error(f"Error updating encounter: {e}")
 
@@ -106,7 +108,7 @@ class Calendar(Screen):
         try:
             cursor = self.calendar_widget.cursor_coordinate
             cursor_value = self.calendar_widget.get_cell_at(cursor)
-            if cursor_value != '_':
+            if '_' not in cursor_value:
                 self.log_error(f"Time slot occupied, please choose another one!")
                 return
             
@@ -118,6 +120,8 @@ class Calendar(Screen):
             conf.save_to_db(conf.Encounter(patient_id=patient_id, rdv=selected_datetime))
 
             self.calendar_widget.update_cell_at(cursor, f'{patient_first_name} {patient_last_name}')
+            self.encounter_widget.clear()
+            self.show_encounters(patient_id)
             self.log_feedback('Encounter added successfully')
         except Exception as e:
             self.log_error(f"Error adding encounter: {e}")
@@ -181,7 +185,10 @@ class Calendar(Screen):
             else:
                 table.add_column(column_name, width=18)
 
-        table.add_rows(schedule)
+        for row in schedule:
+            table.add_row(*row, height=2)
+        # table.add_rows(schedule)
+        # self.log_feedback()
         self.color_todays_encounters()
 
 
@@ -192,20 +199,19 @@ class Calendar(Screen):
         # Iterate through the columns
         for col_idx in range(1, 8):
             column_date = self.get_datetime_from_cell(self.week_index, 3, col_idx).date()
-            # column_date = parser.parse(table.get_header(col_idx)).date()
 
             # Check if the column date is the current day
             if column_date == today:
                 # Iterate through the rows
                 for row_idx in range(table.row_count):
                     cell = table.get_cell_at(Coordinate(row_idx, col_idx))
-                    if cell != '_':
-                        table.update_cell_at(Coordinate(row_idx, col_idx), f'[bold blue]{cell}')
+                    table.update_cell_at(Coordinate(row_idx, col_idx), f'[bold blue]{cell}')
 
 
     def on_data_table_cell_selected(self, message: DataTable.CellSelected):
         if message.control.id == 'enc_table':
             self.query_one('#notes').focus()
+            self.query_one('#notes').value = ''
 
     def on_data_table_row_selected(self, message: DataTable.RowSelected):
         self.encounter_widget.clear()

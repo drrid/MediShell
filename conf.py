@@ -99,7 +99,7 @@ def select_all_starts_with(**kwargs):
 
 def select_all_pt_encounters(id):
     try:
-        return [(str(r.encounter_id), str(r.rdv), str(r.note), str(r.payment), str(r.treatment_cost)) for r in session.query(Encounter).filter(Encounter.patient_id == id).all()]
+        return [(str(r.encounter_id), str(r.rdv), str(r.note), str(r.payment), str(r.treatment_cost)) for r in session.query(Encounter).filter(Encounter.patient_id == id).order_by(Encounter.rdv).all()]
     except Exception as e:
         print(e)
 
@@ -182,10 +182,10 @@ def generate_schedule(week_index):
 init_db()
 
 
-start = tm.time()
-generate_schedule(1)
-end = tm.time()
+# start = tm.time()
+# generate_schedule(1)
+# end = tm.time()
 
-print(end-start)
+# print(end-start)
 
 
