@@ -22,10 +22,12 @@ class Calendar(Screen):
 
     def compose(self):
         self.table = DataTable()
-        self.calendar_widget = DataTable(id='cal_table')
-        self.encounter_widget = DataTable(id='enc_table')
-        self.patient_widget = DataTable(id='pt_table')
+        self.calendar_widget = DataTable(id='cal_table', fixed_columns=1)
+        self.encounter_widget = DataTable(id='enc_table', zebra_stripes=True, fixed_columns=1)
+        self.patient_widget = DataTable(id='pt_table', zebra_stripes=True, fixed_columns=1)
         self.patient_widget.cursor_type = 'row'
+
+
         self.inputs_container = Vertical(Horizontal(
                                     Input('', placeholder='First Name', id='fname'),Input('', placeholder='Last Name', id='lname'),
                                     Input('', placeholder='Phone', id='phone'),Input('', placeholder='Date Of Birth', id='dob'),
@@ -48,8 +50,14 @@ class Calendar(Screen):
         yield self.footer_widget    
     
     def on_mount(self):
-        self.patient_widget.add_columns('ID', 'First Name', 'Last Name', 'Date of Birth', 'Phone')
-        self.encounter_widget.add_columns('ID', 'Encounter', 'Note', 'Payment', 'Fee')
+        PT_CLMN = [['ID', 3], ['First Name', 13], ['Last Name', 13], ['Date of Birth', 12], ['Phone', 10]]
+        for c in PT_CLMN:
+            self.patient_widget.add_column(f'{c[0]}', width=c[1])
+
+        ENC_CLMN = [['ID', 3], ['Encounter', 20], ['Note', 15], ['Payment', 7], ['Fee', 7]]
+        for c in ENC_CLMN:
+            self.encounter_widget.add_column(f'{c[0]}', width=c[1])
+
         self.show_calendar(self.week_index)
         self.show_patients(first_name='')
 
@@ -97,7 +105,11 @@ class Calendar(Screen):
     def action_add_encounter(self):
         try:
             cursor = self.calendar_widget.cursor_coordinate
-
+            cursor_value = self.calendar_widget.get_cell_at(cursor)
+            if cursor_value != '_':
+                self.log_error(f"Time slot occupied, please choose another one!")
+                return
+            
             patient_id = int(self.patient_widget.get_cell_at(Coordinate(self.patient_widget.cursor_coordinate.row, 0)))
             patient_first_name = self.patient_widget.get_cell_at(Coordinate(self.patient_widget.cursor_coordinate.row, 1))
             patient_last_name = self.patient_widget.get_cell_at(Coordinate(self.patient_widget.cursor_coordinate.row, 2))
@@ -158,8 +170,38 @@ class Calendar(Screen):
     def show_calendar(self, week_index):
         schedule = iter(conf.generate_schedule(week_index))
         table = self.query_one('#cal_table')
-        table.add_columns(*next(schedule))
+
+        # Retrieve the column names from the schedule iterator
+        column_names = next(schedule)
+
+        # Iterate over the column names and add them to the table
+        for i, column_name in enumerate(column_names):
+            if i == 0:
+                table.add_column(column_name, width=5)
+            else:
+                table.add_column(column_name, width=18)
+
         table.add_rows(schedule)
+        self.color_todays_encounters()
+
+
+    def color_todays_encounters(self):
+        table = self.query_one('#cal_table')
+        today = dt.datetime.today().date()
+
+        # Iterate through the columns
+        for col_idx in range(1, 8):
+            column_date = self.get_datetime_from_cell(self.week_index, 3, col_idx).date()
+            # column_date = parser.parse(table.get_header(col_idx)).date()
+
+            # Check if the column date is the current day
+            if column_date == today:
+                # Iterate through the rows
+                for row_idx in range(table.row_count):
+                    cell = table.get_cell_at(Coordinate(row_idx, col_idx))
+                    if cell != '_':
+                        table.update_cell_at(Coordinate(row_idx, col_idx), f'[bold blue]{cell}')
+
 
     def on_data_table_cell_selected(self, message: DataTable.CellSelected):
         if message.control.id == 'enc_table':
