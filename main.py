@@ -17,7 +17,7 @@ class Calendar(Screen):
 
     BINDINGS = [("ctrl+left", "previous_week", "Previous Week"),
                 ("ctrl+right", "next_week", "Next Week"),
-                ("space", "add_encounter", "Add Encounter"),
+                ("f1", "add_encounter", "Add Encounter"),
                 ("ctrl+delete", "delete_encounter", "Delete Encounter")]
     week_index = reactive(0)
 
@@ -55,7 +55,7 @@ class Calendar(Screen):
         for c in PT_CLMN:
             self.patient_widget.add_column(f'{c[0]}', width=c[1])
 
-        ENC_CLMN = [['ID', 3], ['Encounter', 20], ['Note', 15], ['Payment', 7], ['Fee', 7]]
+        ENC_CLMN = [['ID', 3], ['Encounter', 12], ['Note', 23], ['Payment', 7], ['Fee', 7]]
         for c in ENC_CLMN:
             self.encounter_widget.add_column(f'{c[0]}', width=c[1])
 
@@ -184,12 +184,18 @@ class Calendar(Screen):
         self.query_one('#feedback').update(f'[bold teal]{str(msg)}')
 
     def show_patients(self, **kwargs):
+        self.patient_widget.clear()
         patients = iter(conf.select_all_starts_with(**kwargs))
         self.patient_widget.add_rows(patients)
 
-    def show_encounters(self, pt_id):
-        encounters = iter(conf.select_all_pt_encounters(pt_id))
-        self.encounter_widget.add_rows(encounters)
+    def show_encounters(self, pt_id, encounter_id='All'):
+        self.encounter_widget.clear()
+        if encounter_id == 'All':
+            encounters = iter(conf.select_all_pt_encounters(pt_id))
+            self.encounter_widget.add_rows(encounters)
+        else:
+            encounter = iter(conf.select_pt_encounter(encounter_id))
+            self.encounter_widget.add_rows(encounter)
 
     def show_calendar(self, week_index):
         schedule = iter(conf.generate_schedule(week_index))
@@ -232,6 +238,18 @@ class Calendar(Screen):
         if message.control.id == 'enc_table':
             self.query_one('#notes').focus()
             self.query_one('#notes').value = ''
+        if message.control.id == 'cal_table':
+            cursor = self.calendar_widget.cursor_coordinate
+            cursor_value = self.calendar_widget.get_cell_at(cursor)
+            if '_' in cursor_value:
+                self.show_patients(first_name='')
+                return
+            
+            encounter_time = self.get_datetime_from_cell(self.week_index, cursor.row, cursor.column)
+            patient_id = conf.select_encounter_by_rdv(encounter_time).patient_id
+            encounter_id = conf.select_encounter_by_rdv(encounter_time).encounter_id
+            self.show_patients(patient_id=patient_id)
+            self.show_encounters(patient_id, encounter_id=encounter_id)
 
     def on_data_table_row_selected(self, message: DataTable.RowSelected):
         self.encounter_widget.clear()

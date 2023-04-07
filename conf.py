@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import os
 from sqlalchemy import and_, func
 from datetime import date, time, timedelta
+import datetime as dt
 import time as tm
 
 
@@ -107,20 +108,26 @@ def select_encounter_by_rdv(rdv):
     
 def select_all_pt_encounters(id):
     try:
-        return [(str(r.encounter_id), str(r.rdv), str(r.note), str(r.payment), str(r.treatment_cost)) for r in session.query(Encounter).filter(Encounter.patient_id == id).order_by(Encounter.rdv).all()]
+        return [(str(r.encounter_id), str(format_timestamp(r.rdv)), str(r.note), str(r.payment), str(r.treatment_cost)) for r in session.query(Encounter).filter(Encounter.patient_id == id).order_by(Encounter.rdv).all()]
     except Exception as e:
         print(e)
 
-def select_patient_encounters(id):
+def format_timestamp(timestamp):
+    # dt_object = dt.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
+    formatted_timestamp = timestamp.strftime('%d %b %H:%M')
+    return formatted_timestamp
+
+
+def select_pt_encounter(id):
     try:
-        return session.query(Encounter).filter(Encounter.patient_id == id).all()
+        return [(str(r.encounter_id), str(format_timestamp(r.rdv)), str(r.note), str(r.payment), str(r.treatment_cost)) for r in session.query(Encounter).filter(Encounter.encounter_id == id).order_by(Encounter.rdv).all()]
     except Exception as e:
         print(e)
 
 
 def calculate_owed_amount(patient_id):
     try:
-        patient_encounters = select_patient_encounters(patient_id)
+        patient_encounters = select_all_pt_encounters(patient_id)
         total_treatment_cost = sum(encounter.treatment_cost for encounter in patient_encounters)
         total_payments = sum(encounter.payment for encounter in patient_encounters)
 
@@ -189,6 +196,9 @@ def generate_schedule(week_index):
 init_db()
 
 
+# print(select_all_pt_encounters(3))
+# print(select_pt_encounter(93))
+# # 
 #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # def read_patients_from_file(file_path):
 #     with open(file_path, 'r') as f:
