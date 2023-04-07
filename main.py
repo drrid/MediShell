@@ -18,7 +18,8 @@ class Calendar(Screen):
     BINDINGS = [("ctrl+left", "previous_week", "Previous Week"),
                 ("ctrl+right", "next_week", "Next Week"),
                 ("f1", "add_encounter", "Add Encounter"),
-                ("ctrl+delete", "delete_encounter", "Delete Encounter")]
+                ("ctrl+delete", "delete_encounter", "Delete Encounter"),
+                ("f5", "clear_inputs", "Clear")]
     week_index = reactive(0)
 
     def compose(self):
@@ -80,6 +81,29 @@ class Calendar(Screen):
         except Exception as e:
             self.log_error(f"Error updating encounter: {e}")
 
+
+    def on_input_changed(self, event: Input.Changed):
+        try:
+            fname = self.query_one('#fname').value
+            lname = self.query_one('#lname').value
+            phone = self.query_one('#phone').value
+            if phone.isdigit():
+                phone = int(phone)
+            else:
+                self.query_one('#phone').value = ''
+
+            patients = iter(conf.select_all_starts_with(first_name=fname, last_name=lname, phone=phone))
+            if patients is not None:
+                self.patient_widget.clear()
+                self.patient_widget.add_rows(patients)
+        except Exception as e:
+            self.log_error(e)
+
+
+    def action_clear_inputs(self):
+        for input in self.query(Input):
+            input.value = ''
+
     def on_button_pressed(self, event: Button.Pressed):
         if event.control.id == 'addpatient':
             first_name = self.query_one('#fname').value.capitalize()
@@ -103,7 +127,14 @@ class Calendar(Screen):
                 self.log_error("Invalid phone number.")
                 return
 
+            # Check for patient duplication
+            existing_patient = conf.select_patient_by_details(first_name, last_name, parsed_phone, parsed_dob)
+            if existing_patient:
+                self.log_error("Patient with the same details already exists.")
+                return
+
             self.add_patient(first_name, last_name, parsed_phone, parsed_dob)
+
 
     def action_delete_encounter(self):
         cursor = self.calendar_widget.cursor_coordinate
@@ -118,6 +149,8 @@ class Calendar(Screen):
             conf.delete_encounter(encounter_id)
             self.calendar_widget.update_cell_at(cursor, '_')
             self.color_todays_encounters()
+            self.encounter_widget.clear()
+            self.show_patients(first_name='')
             self.log_feedback('Encounter deleted successfully.')
         except Exception as e:
             self.log_error(e)
@@ -183,6 +216,7 @@ class Calendar(Screen):
     def log_feedback(self, msg):
         self.query_one('#feedback').update(f'[bold teal]{str(msg)}')
 
+
     def show_patients(self, **kwargs):
         self.patient_widget.clear()
         patients = iter(conf.select_all_starts_with(**kwargs))
@@ -231,7 +265,7 @@ class Calendar(Screen):
                 # Iterate through the rows
                 for row_idx in range(table.row_count):
                     cell = table.get_cell_at(Coordinate(row_idx, col_idx))
-                    table.update_cell_at(Coordinate(row_idx, col_idx), f'[bold blue]{cell}')
+                    table.update_cell_at(Coordinate(row_idx, col_idx), f'[bold yellow]{cell}')
 
 
     def on_data_table_cell_selected(self, message: DataTable.CellSelected):

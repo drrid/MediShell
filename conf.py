@@ -98,6 +98,7 @@ def select_all_starts_with(**kwargs):
     except Exception as e:
         print(e)
 
+
 def select_encounter_by_rdv(rdv):
     try:
         encounter = session.query(Encounter).filter(Encounter.rdv == rdv).one()
@@ -117,12 +118,22 @@ def format_timestamp(timestamp):
     formatted_timestamp = timestamp.strftime('%d %b %H:%M')
     return formatted_timestamp
 
-
 def select_pt_encounter(id):
     try:
         return [(str(r.encounter_id), str(format_timestamp(r.rdv)), str(r.note), str(r.payment), str(r.treatment_cost)) for r in session.query(Encounter).filter(Encounter.encounter_id == id).order_by(Encounter.rdv).all()]
     except Exception as e:
         print(e)
+
+def select_patient_by_details(first_name, last_name, phone, date_of_birth):
+    try:
+        patient2 = session.query(patient).filter(patient.first_name == first_name,
+                                                patient.last_name == last_name,
+                                                patient.phone == phone,
+                                                patient.date_of_birth == date_of_birth).first()
+        return patient2
+    except Exception as e:
+        print(f"Error selecting patient by details: {e}")
+        return None
 
 
 def calculate_owed_amount(patient_id):
