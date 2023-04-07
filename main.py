@@ -8,6 +8,7 @@ from textual import events
 import conf
 import datetime as dt
 from dateutil import parser
+import asyncio
 
 from datetime import date, time, timedelta
 
@@ -51,7 +52,18 @@ class Calendar(Screen):
         yield Container(self.inputs_container, self.tables_container, id='app_grid')
         yield self.footer_widget    
     
+    async def update_calendar_periodically(self) -> None:
+        while True:
+            await asyncio.sleep(60)  # Update every 60 seconds (1 minute)
+            self.show_calendar(self.week_index)
+            self.color_todays_encounters()
+
+    def refresh_tables(self):
+        self.show_calendar(self.week_index)
+
     def on_mount(self):
+        asyncio.create_task(self.update_calendar_periodically())
+
         PT_CLMN = [['ID', 3], ['First Name', 13], ['Last Name', 13], ['Date of Birth', 12], ['Phone', 10]]
         for c in PT_CLMN:
             self.patient_widget.add_column(f'{c[0]}', width=c[1])
@@ -193,7 +205,7 @@ class Calendar(Screen):
 
     def add_patient(self, first_name, last_name, phone, date_of_birth):
         try:
-            patient = conf.patient(first_name=first_name, last_name=last_name, phone=phone, date_of_birth=date_of_birth)
+            patient = conf.Patient(first_name=first_name, last_name=last_name, phone=phone, date_of_birth=date_of_birth)
             conf.save_to_db(patient)
             self.log_feedback("Patient added successfully.")
             self.show_patients(first_name='')
@@ -232,6 +244,7 @@ class Calendar(Screen):
             self.encounter_widget.add_rows(encounter)
 
     def show_calendar(self, week_index):
+        self.calendar_widget.clear(columns=True)
         schedule = iter(conf.generate_schedule(week_index))
         table = self.query_one('#cal_table')
 
