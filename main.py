@@ -17,7 +17,8 @@ class Calendar(Screen):
 
     BINDINGS = [("ctrl+left", "previous_week", "Previous Week"),
                 ("ctrl+right", "next_week", "Next Week"),
-                ("space", "add_encounter", "Add Encounter")]
+                ("space", "add_encounter", "Add Encounter"),
+                ("ctrl+delete", "delete_encounter", "Delete Encounter")]
     week_index = reactive(0)
 
     def compose(self):
@@ -81,8 +82,8 @@ class Calendar(Screen):
 
     def on_button_pressed(self, event: Button.Pressed):
         if event.control.id == 'addpatient':
-            first_name = self.query_one('#fname').value
-            last_name = self.query_one('#lname').value
+            first_name = self.query_one('#fname').value.capitalize()
+            last_name = self.query_one('#lname').value.capitalize()
             phone = self.query_one('#phone').value
             date_of_birth = self.query_one('#dob').value
 
@@ -92,9 +93,9 @@ class Calendar(Screen):
                 return
 
             try:
-                parsed_dob = dt.datetime.strptime(date_of_birth, "%Y-%m-%d").date()
+                parsed_dob = parser.parse(date_of_birth).date()
             except ValueError:
-                self.log_error("Invalid date format. Use YYYY-MM-DD.")
+                self.log_error("Invalid date format.")
                 return
             try:
                 parsed_phone = int(phone)
@@ -103,6 +104,24 @@ class Calendar(Screen):
                 return
 
             self.add_patient(first_name, last_name, parsed_phone, parsed_dob)
+
+    def action_delete_encounter(self):
+        cursor = self.calendar_widget.cursor_coordinate
+        patient_name = self.calendar_widget.get_cell_at(cursor)
+        if '_' in patient_name:
+            self.log_error('No encounter to delete!')
+            return
+        
+        try:
+            encounter_time = self.get_datetime_from_cell(self.week_index, cursor.row, cursor.column)
+            encounter_id = conf.select_encounter_by_rdv(encounter_time).encounter_id
+            conf.delete_encounter(encounter_id)
+            self.calendar_widget.update_cell_at(cursor, '_')
+            self.color_todays_encounters()
+            self.log_feedback('Encounter deleted successfully.')
+        except Exception as e:
+            self.log_error(e)
+            return
 
     def action_add_encounter(self):
         try:
@@ -122,6 +141,7 @@ class Calendar(Screen):
             self.calendar_widget.update_cell_at(cursor, f'{patient_first_name} {patient_last_name}')
             self.encounter_widget.clear()
             self.show_encounters(patient_id)
+            self.color_todays_encounters()
             self.log_feedback('Encounter added successfully')
         except Exception as e:
             self.log_error(f"Error adding encounter: {e}")

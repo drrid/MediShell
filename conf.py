@@ -97,6 +97,14 @@ def select_all_starts_with(**kwargs):
     except Exception as e:
         print(e)
 
+def select_encounter_by_rdv(rdv):
+    try:
+        encounter = session.query(Encounter).filter(Encounter.rdv == rdv).one()
+        return encounter
+    except Exception as e:
+        print(f"Error selecting encounter by rdv: {e}")
+        return None
+    
 def select_all_pt_encounters(id):
     try:
         return [(str(r.encounter_id), str(r.rdv), str(r.note), str(r.payment), str(r.treatment_cost)) for r in session.query(Encounter).filter(Encounter.patient_id == id).order_by(Encounter.rdv).all()]
@@ -178,14 +186,56 @@ def generate_schedule(week_index):
     return schedule
 
 
-
 init_db()
 
 
-# start = tm.time()
-# generate_schedule(1)
-# end = tm.time()
+#--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# def read_patients_from_file(file_path):
+#     with open(file_path, 'r') as f:
+#         lines = f.readlines()
 
-# print(end-start)
+#     patients = []
+
+#     for line in lines:
+#         data = line.strip().split(',')
+#         first_name, last_name, phone, dob = data
+#         date_of_birth = dt.datetime.strptime(dob, '%Y-%m-%d').date()
+#         patient2 = patient(first_name=first_name, last_name=last_name, phone=phone, date_of_birth=date_of_birth)
+#         patients.append(patient2)
+
+#     return patients
+
+
+# def read_encounters_from_file(file_path):
+#     with open(file_path, 'r') as f:
+#         lines = f.readlines()
+
+#     encounters = []
+
+#     for line in lines:
+#         data = line.strip().split(',')
+#         patient_id, rdv, note, payment, treatment_cost = data
+#         rdv = dt.datetime.strptime(rdv, '%Y-%m-%d %H:%M:%S')
+#         payment = int(payment)
+#         treatment_cost = int(treatment_cost)
+#         encounter = Encounter(patient_id=patient_id, rdv=rdv, note=note, payment=payment, treatment_cost=treatment_cost)
+#         encounters.append(encounter)
+
+#     return encounters
+
+
+# patients = read_patients_from_file('patients.txt')
+# encounters = read_encounters_from_file('encounters.txt')
+
+# for patient in patients:
+#     save_to_db(patient)
+
+# for encounter in encounters:
+#     save_to_db(encounter)
+
+#--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
 
 
