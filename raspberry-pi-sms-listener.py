@@ -1,9 +1,8 @@
 import time
 import serial
 import datetime
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, Date, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, Date, Boolean, event
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
-
 
 # 1. Install the required packages
 # pip install sqlalchemy mysql-connector-python pyserial
@@ -86,32 +85,18 @@ def send_sms(phone_number, message):
         print("Failed to send the message.")
     
 
-# 4. Create a function to query the database for new encounters
-def send_sms_for_new_encounters():
+def encounter_added(mapper, connection, encounter):
     now = datetime.datetime.now()
     one_day_later = now + datetime.timedelta(days=1)
-    new_encounters = session.query(Encounter).join(Patient).filter(Encounter.rdv.between(now, one_day_later), Encounter.notified == False).all()
-
-    print(new_encounters)
-    for encounter in new_encounters:
-        if not encounter.notified:
-            patient = encounter.patient
-            message = f"السيد/ة {patient.first_name} {patient.last_name}، نود تذكيركم بموعدكم في عيادتنا اليوم في تمام الساعة {encounter.rdv.strftime('%H:%M')}. نتطلع لرؤيتكم ونأمل أن تكونوا بأفضل حال. دمتم بخير!"
-            # message = f"Dear {patient.first_name} {patient.last_name}, you have an appointment tomorrow at {encounter.rdv.strftime('%H:%M')}. Please, don't be late."
-            sent = send_sms(f'+213{patient.phone}', message)
-            if sent:
-                print(f"SMS sent to {patient.first_name} {patient.last_name} for appointment at {encounter.rdv.strftime('%H:%M')}.")
-                encounter.notified = True
-                session.commit()
-            else:
-                print(f"Failed to send SMS to {patient.first_name} {patient.last_name} for appointment at {encounter.rdv.strftime('%H:%M')}.")
+    if encounter.rdv.between(now, one_day_later) and not encounter.notified:
+        patient = encounter.patient
+        message = f"السيد/ة {patient.first_name} {patient.last_name}، نود تذكيركم بموعدكم في عيادتنا اليوم في تمام الساعة {encounter.rdv.strftime('%H:%M')}. نتطلع لرؤيتكم ونأمل أن تكونوا بأفضل حال. دمتم بخير!"
+        sent = send_sms(f'+213{patient.phone}', message)
+        encounter.notified = True
+        session.commit()
+        if sent:
+            print(f"SMS sent to {patient.first_name} {patient.last_name} for appointment at {encounter.rdv.strftime('%H:%M')}.")
 
 
-# 5. Schedule the script to run periodically
-if __name__ == "__main__":
-    send_sms_for_new_encounters()
+event.listen(Encounter, 'after_insert', encounter_added)
 
-
-# 6. Set up the script to run automatically on Raspberry Pi startup
-# Add the following line to the '/etc/rc.local' file, before 'exit 0':
-# python3 /path/to/your/script.py &
