@@ -5,6 +5,7 @@ import datetime
 import schedule
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, Date, Boolean
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
+import codecs
 
 # 1. Install the required packages
 # pip install sqlalchemy mysql-connector-python pyserial
@@ -50,20 +51,42 @@ class Patient(Base):
 #---------------------------------------------------------------------------------------------------------------------------
 
 # 3. Create the SMS sending function using the modem and AT commands
+
+
 def send_sms(phone_number, message):
-    try:
-        modem = serial.Serial('/dev/serial0', 9600, timeout=1)
-        modem.write(b'AT+CMGF=1\r')  # Set modem to text mode
-        time.sleep(1)
-        modem.write(f'AT+CMGS="{phone_number}"\r'.encode())  # Set the recipient
-        time.sleep(1)
-        modem.write(message.encode() + b'\x1A')  # Send the message and the CTRL+Z character
-        time.sleep(5)
-        modem.close()
-        return True  # Return True if the operation was successful
-    except Exception as e:
-        print(f"Error sending SMS: {e}")
-        return False  # Return False if an error occurred
+    # Convert phone number and message to UCS2 hex format
+    ucs2_phone_number = phone_number.encode("utf-16be").hex()
+    ucs2_message = message.encode("utf-16be").hex()
+
+    # Set up the serial connection
+    ser = serial.Serial('/dev/serial0', 9600, timeout=1)
+    ser.flushInput()
+    ser.flushOutput()
+
+    # Set character set to UCS2 encoding
+    ser.write(b'AT+CSCS="UCS2"\r')
+    time.sleep(0.5)
+
+    # Set modem to text mode
+    ser.write(b'AT+CMGF=1\r')
+    time.sleep(0.5)
+
+    # Send SMS
+    send_cmd = f'AT+CMGS="{ucs2_phone_number}"\r'
+    ser.write(send_cmd.encode())
+    time.sleep(0.5)
+
+    ser.write(ucs2_message.encode() + b'\x1A')  # Add the <CTRL-Z> character (ASCII 26)
+    time.sleep(0.5)
+
+    response = ser.read(ser.in_waiting)
+    ser.close()
+
+    if b"+CMGS" in response:
+        print("Message sent successfully!")
+    else:
+        print("Failed to send the message.")
+    
 
 # 4. Create a function to query the database for new encounters
 def send_sms_for_new_encounters():
@@ -75,7 +98,8 @@ def send_sms_for_new_encounters():
     for encounter in new_encounters:
         if not encounter.notified:
             patient = encounter.patient
-            message = f"Dear {patient.first_name} {patient.last_name}, you have an appointment tomorrow at {encounter.rdv.strftime('%H:%M')}. Please, don't be late."
+            message = f"السيد/ة {patient.first_name} {patient.last_name}، نود تذكيركم بموعدكم في عيادتنا اليوم في تمام الساعة {encounter.rdv.strftime('%H:%M')}. نتطلع لرؤيتكم ونأمل أن تكونوا بأفضل حال. دمتم بخير!"
+            # message = f"Dear {patient.first_name} {patient.last_name}, you have an appointment tomorrow at {encounter.rdv.strftime('%H:%M')}. Please, don't be late."
             sent = send_sms(f'+213{patient.phone}', message)
             if sent:
                 print(f"SMS sent to {patient.first_name} {patient.last_name} for appointment at {encounter.rdv.strftime('%H:%M')}.")
