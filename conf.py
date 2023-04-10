@@ -25,6 +25,7 @@ class Encounter(Base):
     encounter_id = db.Column(db.Integer(), primary_key=True, autoincrement=True)
     patient_id = db.Column(db.Integer(), db.ForeignKey("patient.patient_id"))
     rdv = db.Column(db.DateTime())
+    notified = db.Column(db.Boolean, default=False)
     note = db.Column(db.String(100), default='')
     payment = db.Column(db.Integer(), default=0)
     treatment_cost = db.Column(db.Integer(), default=0)
