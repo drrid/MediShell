@@ -221,7 +221,7 @@ class Calendar(Screen):
                     phone = int(self.query_one('#phone', Input).value)
                     date_of_birth = parser.parse(str(self.query_one('#dob', Input).value))
 
-                    conf.save_to_db(conf.patient(first_name=fname, 
+                    conf.save_to_db(conf.Patient(first_name=fname, 
                                     last_name=lname, 
                                     phone=phone, 
                                     date_of_birth=date_of_birth))

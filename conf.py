@@ -29,12 +29,13 @@ class Encounter(Base):
     note = db.Column(db.String(100), default='')
     payment = db.Column(db.Integer(), default=0)
     treatment_cost = db.Column(db.Integer(), default=0)
+    patient = relationship("Patient", back_populates="encounters")
 
     def __repr__(self):
         return f'{self.encounter_id},{self.rdv},{self.note},{self.payment},{self.treatment_cost}'
 
 # Patient Class -----------------------------------------------------------------------------------------------------------
-class patient(Base):
+class Patient(Base):
 
     __tablename__ = 'patient'
     patient_id = db.Column(db.Integer(), primary_key=True, autoincrement=True)
@@ -57,7 +58,7 @@ def init_db():
 
 def update_patient(patient_id, **kwargs):
     try:
-        patient_to_update = session.query(patient).filter(patient.patient_id == patient_id).one()
+        patient_to_update = session.query(Patient).filter(Patient.patient_id == patient_id).one()
 
         for key, value in kwargs.items():
             setattr(patient_to_update, key, value)
@@ -94,8 +95,8 @@ def delete_encounter(encounter_id):
 
 def select_all_starts_with(**kwargs):
     try:
-        filters = [getattr(patient, key).startswith(value) for key, value in kwargs.items()]
-        return [(str(r.patient_id), str(r.first_name), str(r.last_name), str(r.date_of_birth), str(r.phone)) for r in session.query(patient).filter(*filters)]
+        filters = [getattr(Patient, key).startswith(value) for key, value in kwargs.items()]
+        return [(str(r.patient_id), str(r.first_name), str(r.last_name), str(r.date_of_birth), str(r.phone)) for r in session.query(Patient).filter(*filters)]
     except Exception as e:
         print(e)
 
@@ -127,10 +128,10 @@ def select_pt_encounter(id):
 
 def select_patient_by_details(first_name, last_name, phone, date_of_birth):
     try:
-        patient2 = session.query(patient).filter(patient.first_name == first_name,
-                                                patient.last_name == last_name,
-                                                patient.phone == phone,
-                                                patient.date_of_birth == date_of_birth).first()
+        patient2 = session.query(Patient).filter(Patient.first_name == first_name,
+                                                Patient.last_name == last_name,
+                                                Patient.phone == phone,
+                                                Patient.date_of_birth == date_of_birth).first()
         return patient2
     except Exception as e:
         print(f"Error selecting patient by details: {e}")
@@ -182,7 +183,7 @@ def generate_schedule(week_index):
     schedule.append((" ", *tuple(f"{days_of_week[i]} {(start_date + timedelta(days=i)).strftime('%d %b %y').lstrip('0')}" for i in range(7))))
     
     # Fetch all encounters for the whole week
-    encounters = session.query(Encounter, patient).join(patient).filter(
+    encounters = session.query(Encounter, Patient).join(Patient).filter(
         and_(
             Encounter.rdv >= dt.datetime.combine(start_date, time_slots[0][0]),
             Encounter.rdv < dt.datetime.combine(end_date, time_slots[-1][1]),
