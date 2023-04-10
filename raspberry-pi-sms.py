@@ -10,7 +10,7 @@ from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 # pip install sqlalchemy mysql-connector-python pyserial
 
 # 2. Set up the MySQL connection and SQLAlchemy configuration
-db_url = "mysql+pymysql://user:pass@192.168.5.225:3306/pms"
+db_url = "mysql+pymysql://root:pass@192.168.5.225:3306/pms"
 engine = create_engine(db_url)
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
@@ -62,8 +62,9 @@ def send_sms(phone_number, message):
 # 4. Create a function to query the database for new encounters
 def send_sms_for_new_encounters():
     now = datetime.datetime.now()
-    one_hour_later = now + datetime.timedelta(hours=1)
-    new_encounters = session.query(Encounter).join(Patient).filter(Encounter.rdv.between(now, one_hour_later), Encounter.notified == False).all()
+    one_day_later = now + datetime.timedelta(days=1)
+    # one_hour_later = now + datetime.timedelta(hours=1)
+    new_encounters = session.query(Encounter).join(Patient).filter(Encounter.rdv.between(now, one_day_later), Encounter.notified == False).all()
 
     for encounter in new_encounters:
         if not encounter.notified:  # Check the notified status before sending the message
