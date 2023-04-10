@@ -47,7 +47,7 @@ class Calendar(Screen):
                             id='lower_cnt')
         
         self.footer_widget = Footer()
-        
+        self.footer_widget.styles.background = '#11696b'
         yield Container(self.inputs_container, self.tables_container, id='app_grid')
         yield self.footer_widget    
     
