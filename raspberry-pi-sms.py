@@ -1,11 +1,9 @@
-import os
 import time
 import serial
 import datetime
-import schedule
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, Date, Boolean
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
-import codecs
+
 
 # 1. Install the required packages
 # pip install sqlalchemy mysql-connector-python pyserial

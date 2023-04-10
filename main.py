@@ -4,13 +4,12 @@ from textual.widgets import Static, Footer, Header, Input, DataTable, Button
 from textual.coordinate import Coordinate
 from textual.containers import Container, Horizontal, Vertical
 from textual.reactive import reactive
-from textual import events
 import conf
 import datetime as dt
 from dateutil import parser
 import asyncio
 
-from datetime import date, time, timedelta
+from datetime import date, timedelta
 
 
 # Calendar Screen --------------------------------------------------------------------------------------------------------------------------------------------------
