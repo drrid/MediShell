@@ -51,33 +51,44 @@ class Patient(Base):
 
 # 3. Create the SMS sending function using the modem and AT commands
 def send_sms(phone_number, message):
-    modem = serial.Serial('/dev/serial0', 9600, timeout=1)
-    modem.write(b'AT+CMGF=1\r')  # Set modem to text mode
-    time.sleep(1)
-    modem.write(f'AT+CMGS="{phone_number}"\r'.encode())  # Set the recipient
-    time.sleep(1)
-    modem.write(message.encode() + b'\x1A')  # Send the message and the CTRL+Z character
-    time.sleep(1)
-    modem.close()
+    try:
+        modem = serial.Serial('/dev/serial0', 9600, timeout=1)
+        modem.write(b'AT+CMGF=1\r')  # Set modem to text mode
+        time.sleep(1)
+        modem.write(f'AT+CMGS="{phone_number}"\r'.encode())  # Set the recipient
+        time.sleep(1)
+        modem.write(message.encode() + b'\x1A')  # Send the message and the CTRL+Z character
+        time.sleep(5)
+        modem.close()
+        return True  # Return True if the operation was successful
+    except Exception as e:
+        print(f"Error sending SMS: {e}")
+        return False  # Return False if an error occurred
 
 # 4. Create a function to query the database for new encounters
 def send_sms_for_new_encounters():
     now = datetime.datetime.now()
     one_day_later = now + datetime.timedelta(days=1)
-    # one_hour_later = now + datetime.timedelta(hours=1)
     new_encounters = session.query(Encounter).join(Patient).filter(Encounter.rdv.between(now, one_day_later), Encounter.notified == False).all()
 
+    print(new_encounters)
     for encounter in new_encounters:
-        if not encounter.notified:  # Check the notified status before sending the message
+        if not encounter.notified:
             patient = encounter.patient
-            message = f"Dear {patient.first_name} {patient.last_name}, you have an appointment today at {encounter.rdv.strftime('%H:%M')}. Please, don't be late."
-            send_sms(f'+213{patient.phone}', message)
-            encounter.notified = True
-            session.commit()
+            message = f"Dear {patient.first_name} {patient.last_name}, you have an appointment tomorrow at {encounter.rdv.strftime('%H:%M')}. Please, don't be late."
+            sent = send_sms(f'+213{patient.phone}', message)
+            if sent:
+                print(f"SMS sent to {patient.first_name} {patient.last_name} for appointment at {encounter.rdv.strftime('%H:%M')}.")
+                encounter.notified = True
+                session.commit()
+            else:
+                print(f"Failed to send SMS to {patient.first_name} {patient.last_name} for appointment at {encounter.rdv.strftime('%H:%M')}.")
+
 
 # 5. Schedule the script to run periodically
 if __name__ == "__main__":
     send_sms_for_new_encounters()
+
 
 # 6. Set up the script to run automatically on Raspberry Pi startup
 # Add the following line to the '/etc/rc.local' file, before 'exit 0':
