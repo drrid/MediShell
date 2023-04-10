@@ -28,6 +28,7 @@ class Encounter(Base):
     note = Column(String(100), default='')
     payment = Column(Integer(), default=0)
     treatment_cost = Column(Integer(), default=0)
+    patient = relationship("Patient", back_populates="encounters")
 
     def __repr__(self):
         return f'{self.encounter_id},{self.rdv},{self.note},{self.payment},{self.treatment_cost}'
@@ -70,7 +71,7 @@ def send_sms_for_new_encounters():
         if not encounter.notified:  # Check the notified status before sending the message
             patient = encounter.patient
             message = f"Dear {patient.first_name} {patient.last_name}, you have an appointment today at {encounter.rdv.strftime('%H:%M')}. Please, don't be late."
-            send_sms(patient.phone, message)
+            send_sms(f'+213{patient.phone}', message)
             encounter.notified = True
             session.commit()
 
