@@ -1,33 +1,29 @@
-import sqlalchemy as db
-from sqlalchemy.orm import relationship, declarative_base
-import datetime as dt
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date, Boolean, ForeignKey, and_
+from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from dotenv import load_dotenv
 import os
-from sqlalchemy import and_, func
-from datetime import date, time, timedelta
-import datetime as dt
+from datetime import date, time, timedelta, datetime
 
 
 load_dotenv()
 password = os.getenv('DB_PASSWORD')
 uri = os.getenv('URI')
 
-engine = db.create_engine(f'mysql+pymysql://root:{password}@{uri}', pool_recycle=3600)
+engine = create_engine(f'mysql+pymysql://root:{password}@{uri}', pool_recycle=3600)
 Base = declarative_base()
-db_session = db.orm.sessionmaker(bind=engine)
-session = db_session()
+Session = sessionmaker(bind=engine)
 
 # Encounter Class -----------------------------------------------------------------------------------------------------------
 class Encounter(Base):
 
     __tablename__ = "encounter"
-    encounter_id = db.Column(db.Integer(), primary_key=True, autoincrement=True)
-    patient_id = db.Column(db.Integer(), db.ForeignKey("patient.patient_id"))
-    rdv = db.Column(db.DateTime())
-    notified = db.Column(db.Boolean, default=False)
-    note = db.Column(db.String(100), default='')
-    payment = db.Column(db.Integer(), default=0)
-    treatment_cost = db.Column(db.Integer(), default=0)
+    encounter_id = Column(Integer(), primary_key=True, autoincrement=True)
+    patient_id = Column(Integer(), ForeignKey("patient.patient_id"))
+    rdv = Column(DateTime())
+    notified = Column(Boolean, default=False)
+    note = Column(String(100), default='')
+    payment = Column(Integer(), default=0)
+    treatment_cost = Column(Integer(), default=0)
     patient = relationship("Patient", back_populates="encounters")
 
     def __repr__(self):
@@ -37,11 +33,11 @@ class Encounter(Base):
 class Patient(Base):
 
     __tablename__ = 'patient'
-    patient_id = db.Column(db.Integer(), primary_key=True, autoincrement=True)
-    first_name = db.Column(db.String(50))
-    last_name = db.Column(db.String(50))
-    phone = db.Column(db.Integer())
-    date_of_birth = db.Column(db.Date())
+    patient_id = Column(Integer(), primary_key=True, autoincrement=True)
+    first_name = Column(String(50))
+    last_name = Column(String(50))
+    phone = Column(Integer())
+    date_of_birth = Column(Date())
     encounters = relationship("Encounter")
 
     def __repr__(self):
@@ -51,68 +47,80 @@ class Patient(Base):
 
 
 def init_db():
+    """Initialize the database by creating all tables."""
     Base.metadata.create_all(engine)
     Base.metadata.bind = engine
 
 
 def update_patient(patient_id, **kwargs):
-    try:
-        patient_to_update = session.query(Patient).filter(Patient.patient_id == patient_id).one()
+    """Update the patient with the given ID using the provided keyword arguments."""
+    with Session() as session:
+        try:
+            patient_to_update = session.query(Patient).filter(Patient.patient_id == patient_id).one()
 
-        for key, value in kwargs.items():
-            setattr(patient_to_update, key, value)
+            for key, value in kwargs.items():
+                setattr(patient_to_update, key, value)
 
-        session.commit()
-    except Exception as e:
-        print(e)
-        session.rollback()
+            session.commit()
+        except Exception as e:
+            print(e)
+            session.rollback()
 
 def save_to_db(record):
-    try:
-        session.add(record)
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        print(e) 
+    """Save the given record to the database."""
+    with Session() as session:
+        try:
+            session.add(record)
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            print(e)
 
-def update_encounter(id, **kwargs):
-    try:
-        session.query(Encounter).filter(Encounter.encounter_id == id).update(kwargs)
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        print(e)
+def update_encounter(encounter_id, **kwargs):
+    """Update the encounter with the given ID using the provided keyword arguments."""
+    with Session() as session:
+        try:
+            session.query(Encounter).filter(Encounter.encounter_id == encounter_id).update(kwargs)
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            print(e)
+
 
 def delete_encounter(encounter_id):
-    try:
-        encounter_to_delete = session.query(Encounter).filter(Encounter.encounter_id == encounter_id).one()
-        session.delete(encounter_to_delete)
-        session.commit()
-    except Exception as e:
-        print(e)
-        session.rollback()
+    with Session() as session:
+        try:
+            encounter_to_delete = session.query(Encounter).filter(Encounter.encounter_id == encounter_id).one()
+            session.delete(encounter_to_delete)
+            session.commit()
+        except Exception as e:
+            print(e)
+            session.rollback()
 
 def select_all_starts_with(**kwargs):
-    try:
-        filters = [getattr(Patient, key).startswith(value) for key, value in kwargs.items()]
-        return [(str(r.patient_id), str(r.first_name), str(r.last_name), str(r.date_of_birth), str(r.phone)) for r in session.query(Patient).filter(*filters)]
-    except Exception as e:
-        print(e)
+    with Session() as session:
+        try:
+            filters = [getattr(Patient, key).startswith(value) for key, value in kwargs.items()]
+            return [(str(r.patient_id), str(r.first_name), str(r.last_name), str(r.date_of_birth), str(r.phone)) for r in session.query(Patient).filter(*filters)]
+        except Exception as e:
+            print(e)
 
 
 def select_encounter_by_rdv(rdv):
-    try:
-        encounter = session.query(Encounter).filter(Encounter.rdv == rdv).one()
-        return encounter
-    except Exception as e:
-        print(f"Error selecting encounter by rdv: {e}")
-        return None
+    with Session() as session:
+        try:
+            encounter = session.query(Encounter).filter(Encounter.rdv == rdv).one()
+            return encounter
+        except Exception as e:
+            print(f"Error selecting encounter by rdv: {e}")
+            return None
     
 def select_all_pt_encounters(id):
-    try:
-        return [(str(r.encounter_id), str(format_timestamp(r.rdv)), str(r.note), str(r.payment), str(r.treatment_cost)) for r in session.query(Encounter).filter(Encounter.patient_id == id).order_by(Encounter.rdv).all()]
-    except Exception as e:
-        print(e)
+    with Session() as session:
+        try:
+            return [(str(r.encounter_id), str(format_timestamp(r.rdv)), str(r.note), str(r.payment), str(r.treatment_cost)) for r in session.query(Encounter).filter(Encounter.patient_id == id).order_by(Encounter.rdv).all()]
+        except Exception as e:
+            print(e)
 
 def format_timestamp(timestamp):
     # dt_object = dt.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
@@ -120,21 +128,23 @@ def format_timestamp(timestamp):
     return formatted_timestamp
 
 def select_pt_encounter(id):
-    try:
-        return [(str(r.encounter_id), str(format_timestamp(r.rdv)), str(r.note), str(r.payment), str(r.treatment_cost)) for r in session.query(Encounter).filter(Encounter.encounter_id == id).order_by(Encounter.rdv).all()]
-    except Exception as e:
-        print(e)
+    with Session() as session:
+        try:
+            return [(str(r.encounter_id), str(format_timestamp(r.rdv)), str(r.note), str(r.payment), str(r.treatment_cost)) for r in session.query(Encounter).filter(Encounter.encounter_id == id).order_by(Encounter.rdv).all()]
+        except Exception as e:
+            print(e)
 
 def select_patient_by_details(first_name, last_name, phone, date_of_birth):
-    try:
-        patient2 = session.query(Patient).filter(Patient.first_name == first_name,
-                                                Patient.last_name == last_name,
-                                                Patient.phone == phone,
-                                                Patient.date_of_birth == date_of_birth).first()
-        return patient2
-    except Exception as e:
-        print(f"Error selecting patient by details: {e}")
-        return None
+    with Session() as session:
+        try:
+            patient2 = session.query(Patient).filter(Patient.first_name == first_name,
+                                                    Patient.last_name == last_name,
+                                                    Patient.phone == phone,
+                                                    Patient.date_of_birth == date_of_birth).first()
+            return patient2
+        except Exception as e:
+            print(f"Error selecting patient by details: {e}")
+            return None
 
 
 def calculate_owed_amount(patient_id):
@@ -182,12 +192,13 @@ def generate_schedule(week_index):
     schedule.append((" ", *tuple(f"{days_of_week[i]} {(start_date + timedelta(days=i)).strftime('%d %b %y').lstrip('0')}" for i in range(7))))
     
     # Fetch all encounters for the whole week
-    encounters = session.query(Encounter, Patient).join(Patient).filter(
-        and_(
-            Encounter.rdv >= dt.datetime.combine(start_date, time_slots[0][0]),
-            Encounter.rdv < dt.datetime.combine(end_date, time_slots[-1][1]),
-        )
-    ).all()
+    with Session() as session:
+        encounters = session.query(Encounter, Patient).join(Patient).filter(
+            and_(
+                Encounter.rdv >= datetime.combine(start_date, time_slots[0][0]),
+                Encounter.rdv < datetime.combine(end_date, time_slots[-1][1]),
+            )
+        ).all()
 
     # Group encounters by time slot
     encounter_map = {}
@@ -207,55 +218,6 @@ def generate_schedule(week_index):
 
 init_db()
 
-
-# print(select_all_pt_encounters(3))
-# print(select_pt_encounter(93))
-# # 
-#--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# def read_patients_from_file(file_path):
-#     with open(file_path, 'r') as f:
-#         lines = f.readlines()
-
-#     patients = []
-
-#     for line in lines:
-#         data = line.strip().split(',')
-#         first_name, last_name, phone, dob = data
-#         date_of_birth = dt.datetime.strptime(dob, '%Y-%m-%d').date()
-#         patient2 = patient(first_name=first_name, last_name=last_name, phone=phone, date_of_birth=date_of_birth)
-#         patients.append(patient2)
-
-#     return patients
-
-
-# def read_encounters_from_file(file_path):
-#     with open(file_path, 'r') as f:
-#         lines = f.readlines()
-
-#     encounters = []
-
-#     for line in lines:
-#         data = line.strip().split(',')
-#         patient_id, rdv, note, payment, treatment_cost = data
-#         rdv = dt.datetime.strptime(rdv, '%Y-%m-%d %H:%M:%S')
-#         payment = int(payment)
-#         treatment_cost = int(treatment_cost)
-#         encounter = Encounter(patient_id=patient_id, rdv=rdv, note=note, payment=payment, treatment_cost=treatment_cost)
-#         encounters.append(encounter)
-
-#     return encounters
-
-
-# patients = read_patients_from_file('patients.txt')
-# encounters = read_encounters_from_file('encounters.txt')
-
-# for patient in patients:
-#     save_to_db(patient)
-
-# for encounter in encounters:
-#     save_to_db(encounter)
-
-#--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 
