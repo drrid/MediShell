@@ -115,10 +115,10 @@ def select_encounter_by_rdv(rdv):
             print(f"Error selecting encounter by rdv: {e}")
             return None
     
-def select_all_pt_encounters(id):
+def select_all_pt_encounters(patient_id):
     with Session() as session:
         try:
-            return [(str(r.encounter_id), str(format_timestamp(r.rdv)), str(r.note), str(r.payment), str(r.treatment_cost)) for r in session.query(Encounter).filter(Encounter.patient_id == id).order_by(Encounter.rdv).all()]
+            return [(str(r.encounter_id), str(format_timestamp(r.rdv)), str(r.note), str(r.payment), str(r.treatment_cost)) for r in session.query(Encounter).filter(Encounter.patient_id == patient_id).order_by(Encounter.rdv).all()]
         except Exception as e:
             print(e)
 
@@ -127,10 +127,10 @@ def format_timestamp(timestamp):
     formatted_timestamp = timestamp.strftime('%d %b %H:%M')
     return formatted_timestamp
 
-def select_pt_encounter(id):
+def select_pt_encounter(encounter_id):
     with Session() as session:
         try:
-            return [(str(r.encounter_id), str(format_timestamp(r.rdv)), str(r.note), str(r.payment), str(r.treatment_cost)) for r in session.query(Encounter).filter(Encounter.encounter_id == id).order_by(Encounter.rdv).all()]
+            return [(str(r.encounter_id), str(format_timestamp(r.rdv)), str(r.note), str(r.payment), str(r.treatment_cost)) for r in session.query(Encounter).filter(Encounter.encounter_id == encounter_id).order_by(Encounter.rdv).all()]
         except Exception as e:
             print(e)
 

@@ -237,10 +237,12 @@ class Calendar(Screen):
         self.encounter_widget.clear()
         if encounter_id == 'All':
             encounters = iter(conf.select_all_pt_encounters(pt_id))
-            self.encounter_widget.add_rows(encounters)
+            for row in encounters:
+                self.encounter_widget.add_row(*row, height=int(len(row[2])/20+1))
         else:
             encounter = iter(conf.select_pt_encounter(encounter_id))
-            self.encounter_widget.add_rows(encounter)
+            for row in encounter:
+                self.encounter_widget.add_row(*row, height=int(len(row[2])/20+1))
 
     def show_calendar(self, week_index):
         self.calendar_widget.clear(columns=True)
