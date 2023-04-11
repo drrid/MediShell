@@ -63,40 +63,51 @@ def send_sms(phone_number, message):
     # Set character set to UCS2 encoding
     ser.write(b'AT+CSCS="UCS2"\r')
     time.sleep(0.5)
-
+    ser.write(b'AT+CSMP=17,167,0,8\r')
+    time.sleep(2)
     # Set modem to text mode
     ser.write(b'AT+CMGF=1\r')
     time.sleep(0.5)
 
     # Send SMS
-    send_cmd = f'AT+CMGS="{ucs2_phone_number}"\r'
+    send_cmd = f'AT+CMGS="{ucs2_phone_number}"\r\n'
     ser.write(send_cmd.encode())
     time.sleep(0.5)
 
     ser.write(ucs2_message.encode() + b'\x1A')  # Add the <CTRL-Z> character (ASCII 26)
     time.sleep(7)
 
-    response = ser.read(ser.in_waiting)
+    # response = ser.read(ser.in_waiting)
     ser.close()
 
-    if b"+CMGS" in response:
-        print("Message sent successfully!")
-    else:
-        print("Failed to send the message.")
+    # if b"+CMGS" in response:
+    #     print("Message sent successfully!")
+    # else:
+    #     print("Failed to send the message.")
     
 
-def encounter_added(mapper, connection, encounter):
+def send_sms_for_new_encounters():
     now = datetime.datetime.now()
     one_day_later = now + datetime.timedelta(days=1)
-    if encounter.rdv.between(now, one_day_later) and not encounter.notified:
-        patient = encounter.patient
-        message = f"السيد/ة {patient.first_name} {patient.last_name}، نود تذكيركم بموعدكم في عيادتنا اليوم في تمام الساعة {encounter.rdv.strftime('%H:%M')}. نتطلع لرؤيتكم ونأمل أن تكونوا بأفضل حال. دمتم بخير!"
-        sent = send_sms(f'+213{patient.phone}', message)
-        encounter.notified = True
-        session.commit()
-        if sent:
+    new_encounters = session.query(Encounter).join(Patient).filter(Encounter.rdv.between(now, one_day_later), Encounter.notified == False).all()
+
+    print(new_encounters)
+    for encounter in new_encounters:
+        if not encounter.notified:
+            patient = encounter.patient
+            message = f"السيد/ة {patient.first_name} {patient.last_name}، نود تذكيركم بموعدكم في عيادتنا اليوم في تمام الساعة {encounter.rdv.strftime('%H:%M')}. نتطلع لرؤيتكم ونأمل أن تكونوا بأفضل حال. دمتم بخير!"
+            # message = f"Dear {patient.first_name} {patient.last_name}, you have an appointment tomorrow at {encounter.rdv.strftime('%H:%M')}. Please, don't be late."
+            sent = send_sms(f'+213{patient.phone}', message)
+            #if sent:
             print(f"SMS sent to {patient.first_name} {patient.last_name} for appointment at {encounter.rdv.strftime('%H:%M')}.")
+            encounter.notified = True
+            session.commit()
+            #else:
+            #    print(f"Failed to send SMS to {patient.first_name} {patient.last_name} for appointment at {encounter.rdv.strftime('%H:%M')}.")
 
 
-event.listen(Encounter, 'after_insert', encounter_added)
+if __name__ == "__main__":
+    send_sms_for_new_encounters()
+
+
 
