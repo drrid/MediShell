@@ -83,7 +83,7 @@
 layout: grid;
 grid-size: 1 2;
 row-span: 2;
-grid-rows: 5fr 2fr;
+grid-rows: 7fr 1fr;
 width: 70;
 height: 20;
 padding: 0 1;
@@ -93,24 +93,24 @@ background: $surface;
 
 #selection {
   /* height: auto; */
-  border: solid rgb(221, 196, 5);
+  /* border: solid rgb(221, 196, 5); */
 }
 
 #medicament {
-  border: solid rgb(52, 5, 221);
-  width: 1fr;
+  /* border: solid rgb(52, 5, 221); */
+  width: 3fr;
 }
 
 #exports {
-  border: solid rgb(52, 5, 221);
-  width: 1fr;
+  /* border: solid rgb(52, 5, 221); */
+  width: 2fr;
 }
 
 #buttons {
   /* column-span: 2;  */
   /* height: 1; 
   width: 1fr;  */
-  border: solid rgb(221, 196, 5);
+  /* border: solid rgb(221, 196, 5); */
   /* content-align: center middle; */
 }
 

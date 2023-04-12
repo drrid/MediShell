@@ -8,13 +8,18 @@ import conf
 import datetime as dt
 from dateutil import parser
 import asyncio
+import os
 
 from datetime import date, timedelta
+
+import openpyxl
 
 
 # Export Screen --------------------------------------------------------------------------------------------------------------------------------------------------
 class ExportScreen(ModalScreen):
     
+    selected_export = reactive('')
+
     def compose(self):
         with Grid(id='dialog'):
             with Horizontal(id='selection'):
@@ -65,9 +70,31 @@ class ExportScreen(ModalScreen):
                 yield Button('print', id='print')
                 yield Button('exit', id='exit')
         
+    def on_radio_set_changed(self, event: RadioSet.Changed):
+        self.selected_export = event.pressed.label
+
+
+    def get_checked_checkboxes(self):
+        checked_checkboxes = []
+        for checkbox in self.query(Checkbox):
+            if checkbox.value:
+                checked_checkboxes.append(str(checkbox.label))
+        return checked_checkboxes
+    
+    def modify_excel(self, value):
+        root = os.getcwd()
+        workbook = openpyxl.load_workbook(f'{root}/templates/arret de travail.xlsx')
+        worksheet = workbook['Sheet1']
+        cell = worksheet['L9']
+        cell.value = value
+        workbook.save(f'{root}/templates/arret de travail.xlsx')
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "exit":
+        if event.button.id == "export":
+            pass
+        elif event.button.id == "print":
+            self.modify_excel('\n'.join(self.get_checked_checkboxes()))
+        elif event.button.id == "exit":
             self.app.pop_screen()
 
 
