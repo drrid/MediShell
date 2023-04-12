@@ -48,6 +48,8 @@ class Calendar(Screen):
         
         self.footer_widget = Footer()
         self.footer_widget.styles.background = '#11696b'
+
+        yield Header()
         yield Container(self.inputs_container, self.tables_container, id='app_grid')
         yield self.footer_widget    
     
@@ -312,6 +314,8 @@ class Calendar(Screen):
 class PMSApp(App):
     CSS_PATH = 'styling.css'
     SCREENS = {"screen1": Calendar()}
+    TITLE = 'TerminalPMS'
+    SUB_TITLE = 'by Dr.Abdennebi Tarek'
 
     def on_mount(self):
         self.push_screen(self.SCREENS.get('screen1'))
