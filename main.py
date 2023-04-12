@@ -1,8 +1,8 @@
 from textual.app import App
-from textual.screen import Screen
-from textual.widgets import Static, Footer, Header, Input, DataTable, Button
+from textual.screen import Screen, ModalScreen
+from textual.widgets import Static, Footer, Header, Input, DataTable, Button, RadioButton, RadioSet, Checkbox
 from textual.coordinate import Coordinate
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container, Horizontal, Vertical, VerticalScroll, Grid
 from textual.reactive import reactive
 import conf
 import datetime as dt
@@ -12,14 +12,30 @@ import asyncio
 from datetime import date, timedelta
 
 
+# Export Screen --------------------------------------------------------------------------------------------------------------------------------------------------
+class ExportScreen(ModalScreen):
+    
+    def compose(self):
+        with Grid(id='dialog'):
+            with RadioSet(id='exports'):
+                yield RadioButton('ordonannce', id='export_menu')
+                yield RadioButton('Panoramique', id='pano')
+            with Vertical(id='medicament'):
+                yield Checkbox('Rovamicyne', id='rovamicyne')
+            with Horizontal(id='buttons'):
+                yield Button('export', id='export')
+                yield Button('print', id='print')
+                yield Button('exit', id='quit')
+        
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "quit":
+            self.app.pop_screen()
+
+
 # Calendar Screen --------------------------------------------------------------------------------------------------------------------------------------------------
 class Calendar(Screen):
 
-    BINDINGS = [("ctrl+left", "previous_week", "Previous Week"),
-                ("ctrl+right", "next_week", "Next Week"),
-                ("f1", "add_encounter", "Add Encounter"),
-                ("ctrl+delete", "delete_encounter", "Delete Encounter"),
-                ("f5", "clear_inputs", "Clear")]
     week_index = reactive(0)
 
     def compose(self):
@@ -312,13 +328,22 @@ class Calendar(Screen):
 
 # ------------------------------------------------------------------------Main App-----------------------------------------------------------------------------------------
 class PMSApp(App):
+    BINDINGS = [("ctrl+left", "previous_week", "Previous Week"),
+            ("ctrl+right", "next_week", "Next Week"),
+            ("f1", "add_encounter", "Add Encounter"),
+            ("ctrl+delete", "delete_encounter", "Delete Encounter"),
+            ("f5", "clear_inputs", "Clear"),
+            ("f10", "request_export", "Export")]
+    
     CSS_PATH = 'styling.css'
-    SCREENS = {"screen1": Calendar()}
     TITLE = 'TerminalPMS'
     SUB_TITLE = 'by Dr.Abdennebi Tarek'
 
     def on_mount(self):
-        self.push_screen(self.SCREENS.get('screen1'))
+        self.push_screen(Calendar())
+
+    def action_request_export(self) -> None:
+        self.push_screen(ExportScreen())
 
 if __name__ == "__main__":
     app = PMSApp()
