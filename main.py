@@ -18,18 +18,20 @@ import openpyxl
 # Export Screen --------------------------------------------------------------------------------------------------------------------------------------------------
 class ExportScreen(ModalScreen):
     
-    selected_export = reactive('')
+    # selected_export = reactive('')
 
     def compose(self):
         with Grid(id='dialog'):
             with Horizontal(id='selection'):
-                with RadioSet(id='exports'):
-                    yield RadioButton('Ordonannce', id='export_menu')
-                    yield RadioButton('Pano', id='pano')
-                    yield RadioButton('TLR', id='tlr')
-                    yield RadioButton('Pano+TLR', id='pano_tlr')
-                    yield RadioButton('Certificat', id='certificat')
-                    yield RadioButton('Arret 3 jours', id='arret_3jr')
+                with Vertical(id='right_cnt'):
+                    with RadioSet(id='exports'):
+                        yield RadioButton('Ordonnance', id='export_menu')
+                        yield RadioButton('Pano', id='pano')
+                        yield RadioButton('TLR', id='tlr')
+                        yield RadioButton('Pano+TLR', id='pano_tlr')
+                        yield RadioButton('Certificat', id='certificat')
+                        yield RadioButton('Arret 3 jours', id='arret_3jr')
+                    yield(Static(id='feedback_popup'))
                 with VerticalScroll(id='medicament'):
                     yield Checkbox('LEXIN 1 g (CP) - 1cp * 2/J', id='lexin')
                     yield Checkbox('BIOROGYL(CP)', id='biorogyl')
@@ -70,9 +72,8 @@ class ExportScreen(ModalScreen):
                 yield Button('print', id='print')
                 yield Button('exit', id='exit')
         
-    def on_radio_set_changed(self, event: RadioSet.Changed):
-        self.selected_export = event.pressed.label
-
+    # def on_radio_set_changed(self, event: RadioSet.Changed):
+    #     self.selected_export = event.pressed.label
 
     def get_checked_checkboxes(self):
         checked_checkboxes = []
@@ -81,21 +82,62 @@ class ExportScreen(ModalScreen):
                 checked_checkboxes.append(str(checkbox.label))
         return checked_checkboxes
     
-    def modify_excel(self, value):
+    def get_checked_radiobutton(self):
+        for radiobutton in self.query(RadioButton):
+            if radiobutton.value:   
+                return str(radiobutton.label)
+            
+    def save_ordonnance(self, patient, prescription):
         root = os.getcwd()
-        workbook = openpyxl.load_workbook(f'{root}/templates/arret de travail.xlsx')
+        workbook = openpyxl.load_workbook(f'{root}/templates/Ordonnance.xlsx')
         worksheet = workbook['Sheet1']
-        cell = worksheet['L9']
-        cell.value = value
-        workbook.save(f'{root}/templates/arret de travail.xlsx')
+        name_cell = worksheet['K8']
+        pres_cell = worksheet['K13']
+        date_cell = worksheet['O8']
+
+        today = dt.date.today()
+        formatted_date = today.strftime('%d-%m-%Y')
+
+        name_cell.value = f'{patient[1]} {patient[2]}'
+        pres_cell.value = '\n'.join(prescription)
+        date_cell.value = formatted_date
+
+        workbook.save(f'{root}/saved-xlsx/Ordonnance.xlsx')
+    
+    # def modify_excel(self, value, cell, file):
+    #     root = os.getcwd()
+    #     workbook = openpyxl.load_workbook(f'{root}/templates/{file}.xlsx')
+    #     worksheet = workbook['Sheet1']
+    #     cell = worksheet[cell]
+    #     cell.value = value
+    #     workbook.save(f'{root}/saved-xlsx/{file}.xlsx')
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "export":
-            pass
-        elif event.button.id == "print":
-            self.modify_excel('\n'.join(self.get_checked_checkboxes()))
+        if event.button.id in ["export", "print"]:
+            selected_radiobutton = self.get_checked_radiobutton()
+
+            if selected_radiobutton == 'Ordonnance':
+                calendar_screen = self.app.SCREENS.get('calendar')
+                patient_cursor = calendar_screen.patient_widget.cursor_coordinate
+                patient = calendar_screen.patient_widget.get_row_at(patient_cursor.row)
+
+                selected_checkboxes = self.get_checked_checkboxes()
+
+                if len(selected_checkboxes) != 0:
+                    self.save_ordonnance(patient, selected_checkboxes)
+                    self.log_feedback(patient)
+                else:
+                    self.log_error('please choose a prescription!')
+                    return
+
         elif event.button.id == "exit":
             self.app.pop_screen()
+
+    def log_feedback(self, msg):
+        self.query_one('#feedback_popup').update(f'[bold #11696b]{str(msg)}')
+
+    def log_error(self, msg):
+        self.query_one('#feedback_popup').update(f'[bold red]{str(msg)}')
 
 
 # Calendar Screen --------------------------------------------------------------------------------------------------------------------------------------------------
@@ -313,7 +355,7 @@ class Calendar(Screen):
         self.show_calendar(self.week_index)
 
     def log_feedback(self, msg):
-        self.query_one('#feedback').update(f'[bold teal]{str(msg)}')
+        self.query_one('#feedback').update(f'[bold #11696b]{str(msg)}')
 
 
     def show_patients(self, **kwargs):
@@ -408,9 +450,10 @@ class PMSApp(App):
     CSS_PATH = 'styling.css'
     TITLE = 'TerminalPMS'
     SUB_TITLE = 'by Dr.Abdennebi Tarek'
+    SCREENS = {"calendar": Calendar()}
 
     def on_mount(self):
-        self.push_screen(Calendar())
+        self.push_screen(self.SCREENS.get('calendar'))
 
     def action_request_export(self) -> None:
         self.push_screen(ExportScreen())

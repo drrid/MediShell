@@ -103,7 +103,15 @@ background: $surface;
 
 #exports {
   /* border: solid rgb(52, 5, 221); */
+  height: 2fr;
+}
+
+#right_cnt {
   width: 2fr;
+}
+
+#feedback_popup {
+  height: 1fr
 }
 
 #buttons {
