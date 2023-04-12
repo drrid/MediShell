@@ -17,19 +17,57 @@ class ExportScreen(ModalScreen):
     
     def compose(self):
         with Grid(id='dialog'):
-            with RadioSet(id='exports'):
-                yield RadioButton('ordonannce', id='export_menu')
-                yield RadioButton('Panoramique', id='pano')
-            with Vertical(id='medicament'):
-                yield Checkbox('Rovamicyne', id='rovamicyne')
+            with Horizontal(id='selection'):
+                with RadioSet(id='exports'):
+                    yield RadioButton('Ordonannce', id='export_menu')
+                    yield RadioButton('Pano', id='pano')
+                    yield RadioButton('TLR', id='tlr')
+                    yield RadioButton('Pano+TLR', id='pano_tlr')
+                    yield RadioButton('Certificat', id='certificat')
+                    yield RadioButton('Arret 3 jours', id='arret_3jr')
+                with VerticalScroll(id='medicament'):
+                    yield Checkbox('LEXIN 1 g (CP) - 1cp * 2/J', id='lexin')
+                    yield Checkbox('BIOROGYL(CP)', id='biorogyl')
+                    yield Checkbox('ROVAMYCINE 3M(CP)', id='rovamycine_3m')
+                    yield Checkbox('ROVAMYCINE 1.5M(CP)', id='rovamycine_1.5m')
+                    yield Checkbox('ROVAMYCINE (SP)', id='rovamycine_sp')
+                    yield Checkbox('CLAMOXYL 1 g (CP)', id='clamoxyl_1g')
+                    yield Checkbox('CLAMOXYL 500 mg (SIROP) - 1 cuillère * 2/j', id='clamoxyl_500mg_sirop')
+                    yield Checkbox('CLAMOXYL 500 mg (INJ)', id='clamoxyl_500mg_inj')
+                    yield Checkbox('CLAMOXYL 1 g (INJ)', id='clamoxyl_1g_inj')
+                    yield Checkbox('FLAGYL 500 mg (CP)', id='flagyl_500mg')
+                    yield Checkbox('FLAGYL 250 mg (CP)', id='flagyl_250mg')
+                    yield Checkbox('FLAGYL 125 mg (SP)', id='flagyl_125mg')
+                    yield Checkbox('SOLUPRED 20 mg (CP)', id='solupred_20mg')
+                    yield Checkbox('DOLIPRANE 1 g (CP)', id='doliprane_1g')
+                    yield Checkbox('LOMAC 20mg (gle)', id='lomac_20mg')
+                    yield Checkbox('SOLUMEDROL 40 mg (INJ) - 1inj*1/j LE MATIN', id='solumedrol_40mg_inj')
+                    yield Checkbox('MAXTRIT BDB - 01 BTE - 1BDB * 2/J', id='maxtrit_bdb')
+                    yield Checkbox('NOPAIN DS (CP)', id='nopain_ds')
+                    yield Checkbox('RAPIDUS 50 mg (CP)', id='rapidus_50mg')
+                    yield Checkbox('SAPOFEN 600 mg(CP)', id='sapofen_600mg')
+                    yield Checkbox('SAPOFEN 400 mg(CP)', id='sapofen_400mg')
+                    yield Checkbox('SAPOFEN 200 mg(CP)', id='sapofen_200mg')
+                    yield Checkbox('ALGIFEN (SP) 1DDP *2/J', id='algifen')
+                    yield Checkbox('CODOLIPRANE 1 g (CP)', id='codoliprane_1g')
+                    yield Checkbox('NEUROVIT (CP)', id='neurovit')
+                    yield Checkbox('VIT C (CP)', id='vit_c')
+                    yield Checkbox('AUGMENTIN 1 g (SH)', id='augmentin_1g_sh')
+                    yield Checkbox('AUGMENTIN 500 mg (SH)', id='augmentin_500mg_sh')
+                    yield Checkbox('AUGMENTIN 100 mg (SP)', id='augmentin_100mg_sp')
+                    yield Checkbox('CLOFENAL 100 mg (SUPP)', id='clofenal_100mg_supp')
+                    yield Checkbox('CLOFENAL 25 mg (SUPP)', id='clofenal_25mg_supp')
+                    yield Checkbox('DOLIPRANE 300 mg (SH)', id='doliprane_300mg_sh')
+                    yield Checkbox('DOLIPRANE 300 mg (SUPP)', id='doliprane_300mg_supp')
+
             with Horizontal(id='buttons'):
                 yield Button('export', id='export')
                 yield Button('print', id='print')
-                yield Button('exit', id='quit')
+                yield Button('exit', id='exit')
         
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "quit":
+        if event.button.id == "exit":
             self.app.pop_screen()
 
 
