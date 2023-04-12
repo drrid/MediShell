@@ -92,22 +92,19 @@ background: $surface;
 }
 
 #selection {
-  /* height: auto; */
-  /* border: solid rgb(221, 196, 5); */
+
 }
 
 #medicament {
-  /* border: solid rgb(52, 5, 221); */
-  width: 3fr;
+  width: 7fr;
 }
 
-#exports {
-  /* border: solid rgb(52, 5, 221); */
+/* #exports {
   height: 2fr;
-}
+} */
 
 #right_cnt {
-  width: 2fr;
+  width: 3fr;
 }
 
 #feedback_popup {
