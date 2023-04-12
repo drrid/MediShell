@@ -35,7 +35,12 @@ class ExportScreen(ModalScreen):
 
 # Calendar Screen --------------------------------------------------------------------------------------------------------------------------------------------------
 class Calendar(Screen):
-
+    BINDINGS = [("ctrl+left", "previous_week", "Previous Week"),
+            ("ctrl+right", "next_week", "Next Week"),
+            ("f1", "add_encounter", "Add Encounter"),
+            ("ctrl+delete", "delete_encounter", "Delete Encounter"),
+            ("f5", "clear_inputs", "Clear"),
+            ("f10", "request_export", "Export")]
     week_index = reactive(0)
 
     def compose(self):
