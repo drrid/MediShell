@@ -17,15 +17,13 @@ import openpyxl
 
 # Export Screen --------------------------------------------------------------------------------------------------------------------------------------------------
 class ExportScreen(ModalScreen):
-    
-    # selected_export = reactive('')
 
     def compose(self):
         with Grid(id='dialog'):
             with Horizontal(id='selection'):
                 with Vertical(id='right_cnt'):
                     with RadioSet(id='exports'):
-                        yield RadioButton('Ordonnance', id='export_menu')
+                        yield RadioButton('Ordonnance', id='export_menu', value=True)
                         yield RadioButton('Pano', id='pano')
                         yield RadioButton('TLR', id='tlr')
                         yield RadioButton('Pano+TLR', id='pano_tlr')
@@ -68,12 +66,9 @@ class ExportScreen(ModalScreen):
                     yield Checkbox('DOLIPRANE 300 mg (SUPP)', id='doliprane_300mg_supp')
 
             with Horizontal(id='buttons'):
-                yield Button('export', id='export')
-                yield Button('print', id='print')
-                yield Button('exit', id='exit')
-        
-    # def on_radio_set_changed(self, event: RadioSet.Changed):
-    #     self.selected_export = event.pressed.label
+                yield Button('export', id='export', variant='primary')
+                yield Button('print', id='print', variant='primary')
+                yield Button('exit', id='exit', variant='error')
 
     def get_checked_checkboxes(self):
         checked_checkboxes = []
@@ -103,35 +98,55 @@ class ExportScreen(ModalScreen):
         date_cell.value = formatted_date
 
         workbook.save(f'{root}/saved-xlsx/Ordonnance.xlsx')
+        self.log_feedback(f'"Ordonnance.xlsx" generated successfully.')
+
+    def save_document(self, patient, file):
+        root = os.getcwd()
+        workbook = openpyxl.load_workbook(f'{root}/templates/{file}.xlsx')
+        worksheet = workbook['Sheet1']
+        name_cell = worksheet['K8']
+        date_cell = worksheet['O8']
+
+        today = dt.date.today()
+        formatted_date = today.strftime('%d-%m-%Y')
+
+        name_cell.value = f'{patient[1]} {patient[2]}'
+        date_cell.value = formatted_date
+
+        workbook.save(f'{root}/saved-xlsx/{file}.xlsx')
+        self.log_feedback(f'"{file}.xlsx" generated successfully.')
     
-    # def modify_excel(self, value, cell, file):
-    #     root = os.getcwd()
-    #     workbook = openpyxl.load_workbook(f'{root}/templates/{file}.xlsx')
-    #     worksheet = workbook['Sheet1']
-    #     cell = worksheet[cell]
-    #     cell.value = value
-    #     workbook.save(f'{root}/saved-xlsx/{file}.xlsx')
+
+    def get_patient(self):
+        calendar_screen = self.app.SCREENS.get('calendar')
+        patient_cursor = calendar_screen.patient_widget.cursor_coordinate
+        patient = calendar_screen.patient_widget.get_row_at(patient_cursor.row)
+        return patient
+
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id in ["export", "print"]:
             selected_radiobutton = self.get_checked_radiobutton()
+            try:
+                patient = self.get_patient()
+            except:
+                self.log_error('Please select a patient!')
+                return
 
             if selected_radiobutton == 'Ordonnance':
-                calendar_screen = self.app.SCREENS.get('calendar')
-                patient_cursor = calendar_screen.patient_widget.cursor_coordinate
-                patient = calendar_screen.patient_widget.get_row_at(patient_cursor.row)
-
                 selected_checkboxes = self.get_checked_checkboxes()
-
                 if len(selected_checkboxes) != 0:
                     self.save_ordonnance(patient, selected_checkboxes)
-                    self.log_feedback(patient)
                 else:
                     self.log_error('please choose a prescription!')
                     return
+                
+            elif selected_radiobutton in ['Arret 3 jours', 'Certificat', 'Pano', 'TLR', 'Pano+TLR']:
+                self.save_document(patient, selected_radiobutton)
 
         elif event.button.id == "exit":
             self.app.pop_screen()
+
 
     def log_feedback(self, msg):
         self.query_one('#feedback_popup').update(f'[bold #11696b]{str(msg)}')
