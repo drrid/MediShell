@@ -1,0 +1,1 @@
+pyinstaller --onefile --add-data "conf.py;." --add-data ".env;." --add-data "styling.css;." --add-data "templates/Arret 3 jours.xlsx;templates" --add-data "templates/Certificat.xlsx;templates" --add-data "templates/Ordonnance.xlsx;templates" --add-data "templates/Pano.xlsx;templates" --add-data "templates/Pano+TLR.xlsx;templates" --add-data "templates/TLR.xlsx;templates" main.py

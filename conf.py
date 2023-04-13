@@ -65,6 +65,7 @@ def init_db():
     Base.metadata.bind = engine
 
 def save_prescription_file(patient_id, first_name, last_name, encounter_id, prescription_type, workbook):
+    # current_script_directory = os.path.join(os.path.expanduser('~'), 'Desktop')
     current_script_directory = os.path.dirname(os.path.abspath(__file__))
     patient_directory = os.path.join(current_script_directory, 'prescriptions', f'{patient_id}_{first_name}_{last_name}')
     
