@@ -15,6 +15,20 @@ from datetime import date, timedelta
 import openpyxl
 
 
+medicaments = [
+    ('LEXIN 1 g (CP) - 1cp * 2/J', 'lexin'),('BIOROGYL(CP)', 'biorogyl'),('ROVAMYCINE 3M(CP)', 'rovamycine_3m'),
+    ('ROVAMYCINE 1.5M(CP)', 'rovamycine_1.5m'),('ROVAMYCINE (SP)', 'rovamycine_sp'),('CLAMOXYL 1 g (CP)', 'clamoxyl_1g'),
+    ('CLAMOXYL 500 mg (SIROP) - 1 cuillère * 2/j', 'clamoxyl_500mg_sirop'),('CLAMOXYL 500 mg (INJ)', 'clamoxyl_500mg_inj'),('CLAMOXYL 1 g (INJ)', 'clamoxyl_1g_inj'),
+    ('FLAGYL 500 mg (CP)', 'flagyl_500mg'),('FLAGYL 250 mg (CP)', 'flagyl_250mg'),('FLAGYL 125 mg (SP)', 'flagyl_125mg'),
+    ('SOLUPRED 20 mg (CP)', 'solupred_20mg'),('DOLIPRANE 1 g (CP)', 'doliprane_1g'),('LOMAC 20mg (gle)', 'lomac_20mg'),
+    ('SOLUMEDROL 40 mg (INJ) - 1inj*1/j LE MATIN', 'solumedrol_40mg_inj'),('MAXTRIT BDB - 01 BTE - 1BDB * 2/J', 'maxtrit_bdb'),('NOPAIN DS (CP)', 'nopain_ds'),
+    ('RAPIDUS 50 mg (CP)', 'rapidus_50mg'),('SAPOFEN 600 mg(CP)', 'sapofen_600mg'),('SAPOFEN 400 mg(CP)', 'sapofen_400mg'),
+    ('SAPOFEN 200 mg(CP)', 'sapofen_200mg'),('ALGIFEN (SP) 1DDP *2/J', 'algifen'),('CODOLIPRANE 1 g (CP)', 'codoliprane_1g'),
+    ('NEUROVIT (CP)', 'neurovit'),('VIT C (CP)', 'vit_c'),('AUGMENTIN 1 g (SH)', 'augmentin_1g_sh'),
+    ('AUGMENTIN 500 mg (SH)', 'augmentin_500mg_sh'),('AUGMENTIN 100 mg (SP)', 'augmentin_100mg_sp'),('CLOFENAL 100 mg (SUPP)', 'clofenal_100mg_supp'),
+    ('CLOFENAL 25 mg (SUPP)', 'clofenal_25mg_supp'),('DOLIPRANE 300 mg (SH)', 'doliprane_300mg_sh'),('DOLIPRANE 300 mg (SUPP)', 'doliprane_300mg_supp')
+]
+
 # Export Screen --------------------------------------------------------------------------------------------------------------------------------------------------
 class ExportScreen(ModalScreen):
 
@@ -31,39 +45,8 @@ class ExportScreen(ModalScreen):
                         yield RadioButton('Arret 3 jours', id='arret_3jr')
                     yield(Static(id='feedback_popup'))
                 with VerticalScroll(id='medicament'):
-                    yield Checkbox('LEXIN 1 g (CP) - 1cp * 2/J', id='lexin')
-                    yield Checkbox('BIOROGYL(CP)', id='biorogyl')
-                    yield Checkbox('ROVAMYCINE 3M(CP)', id='rovamycine_3m')
-                    yield Checkbox('ROVAMYCINE 1.5M(CP)', id='rovamycine_1.5m')
-                    yield Checkbox('ROVAMYCINE (SP)', id='rovamycine_sp')
-                    yield Checkbox('CLAMOXYL 1 g (CP)', id='clamoxyl_1g')
-                    yield Checkbox('CLAMOXYL 500 mg (SIROP) - 1 cuillère * 2/j', id='clamoxyl_500mg_sirop')
-                    yield Checkbox('CLAMOXYL 500 mg (INJ)', id='clamoxyl_500mg_inj')
-                    yield Checkbox('CLAMOXYL 1 g (INJ)', id='clamoxyl_1g_inj')
-                    yield Checkbox('FLAGYL 500 mg (CP)', id='flagyl_500mg')
-                    yield Checkbox('FLAGYL 250 mg (CP)', id='flagyl_250mg')
-                    yield Checkbox('FLAGYL 125 mg (SP)', id='flagyl_125mg')
-                    yield Checkbox('SOLUPRED 20 mg (CP)', id='solupred_20mg')
-                    yield Checkbox('DOLIPRANE 1 g (CP)', id='doliprane_1g')
-                    yield Checkbox('LOMAC 20mg (gle)', id='lomac_20mg')
-                    yield Checkbox('SOLUMEDROL 40 mg (INJ) - 1inj*1/j LE MATIN', id='solumedrol_40mg_inj')
-                    yield Checkbox('MAXTRIT BDB - 01 BTE - 1BDB * 2/J', id='maxtrit_bdb')
-                    yield Checkbox('NOPAIN DS (CP)', id='nopain_ds')
-                    yield Checkbox('RAPIDUS 50 mg (CP)', id='rapidus_50mg')
-                    yield Checkbox('SAPOFEN 600 mg(CP)', id='sapofen_600mg')
-                    yield Checkbox('SAPOFEN 400 mg(CP)', id='sapofen_400mg')
-                    yield Checkbox('SAPOFEN 200 mg(CP)', id='sapofen_200mg')
-                    yield Checkbox('ALGIFEN (SP) 1DDP *2/J', id='algifen')
-                    yield Checkbox('CODOLIPRANE 1 g (CP)', id='codoliprane_1g')
-                    yield Checkbox('NEUROVIT (CP)', id='neurovit')
-                    yield Checkbox('VIT C (CP)', id='vit_c')
-                    yield Checkbox('AUGMENTIN 1 g (SH)', id='augmentin_1g_sh')
-                    yield Checkbox('AUGMENTIN 500 mg (SH)', id='augmentin_500mg_sh')
-                    yield Checkbox('AUGMENTIN 100 mg (SP)', id='augmentin_100mg_sp')
-                    yield Checkbox('CLOFENAL 100 mg (SUPP)', id='clofenal_100mg_supp')
-                    yield Checkbox('CLOFENAL 25 mg (SUPP)', id='clofenal_25mg_supp')
-                    yield Checkbox('DOLIPRANE 300 mg (SH)', id='doliprane_300mg_sh')
-                    yield Checkbox('DOLIPRANE 300 mg (SUPP)', id='doliprane_300mg_supp')
+                    for med_name, med_id in medicaments:
+                        yield Checkbox(med_name, id=med_id)
 
             with Horizontal(id='buttons'):
                 yield Button('export', id='export', variant='primary')
