@@ -65,17 +65,26 @@ def init_db():
     Base.metadata.bind = engine
 
 def save_prescription_file(patient_id, first_name, last_name, encounter_id, prescription_type, workbook):
-    patient_folder = create_patient_folder(patient_id, first_name, last_name)
-    file_path = f"{patient_folder}/prescription_{encounter_id}_{prescription_type}.xlsx"
-    workbook.save(file_path)
-    prescription_file = PrescriptionFile(encounter_id=encounter_id, file_path=file_path, prescription_type=prescription_type)
-    save_to_db(prescription_file)
+    current_script_directory = os.path.dirname(os.path.abspath(__file__))
+    patient_directory = os.path.join(current_script_directory, 'prescriptions', f'{patient_id}_{first_name}_{last_name}')
+    
+    if not os.path.exists(patient_directory):
+        os.makedirs(patient_directory)
 
-def create_patient_folder(patient_id, first_name, last_name):
-    patient_folder = f"prescriptions/{patient_id}_{first_name}_{last_name}"
-    if not os.path.exists(patient_folder):
-        os.makedirs(patient_folder)
-    return patient_folder
+    # Including encounter_id in the file name
+    file_name = f'{encounter_id}_{prescription_type}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    file_path = os.path.join(patient_directory, file_name)
+    workbook.save(file_path)
+
+    # Update the database with the file path
+    update_encounter(encounter_id, prescription_file_path=file_path)
+
+# def create_patient_folder(patient_id, first_name, last_name):
+#     root = os.path.dirname(os.path.abspath(__file__))
+#     patient_folder = f"{root}/prescriptions/{patient_id}_{first_name}_{last_name}"
+#     if not os.path.exists(patient_folder):
+#         os.makedirs(patient_folder)
+#     return patient_folder
 
 def get_last_patient_encounter(patient_id):
     with Session() as session:

@@ -65,8 +65,8 @@ class ExportScreen(ModalScreen):
             if radiobutton.value:   
                 return str(radiobutton.label)
             
-    def save_ordonnance(self, patient, prescription):
-        root = os.getcwd()
+    def save_ordonnance(self, patient, encounter, prescription):
+        root = os.path.dirname(os.path.abspath(__file__))
         workbook = openpyxl.load_workbook(f'{root}/templates/Ordonnance.xlsx')
         worksheet = workbook['Sheet1']
         name_cell = worksheet['K8']
@@ -83,14 +83,14 @@ class ExportScreen(ModalScreen):
         patient_id = int(patient[0])
         first_name = patient[1]
         last_name = patient[2]
-        encounter_id = conf.get_last_patient_encounter(patient_id).encounter_id
+        encounter_id = encounter[0]
         prescription_type = "ordonnance"
         conf.save_prescription_file(patient_id, first_name, last_name, encounter_id, prescription_type, workbook)
         self.log_feedback('Document generated successfully.')
 
 
-    def save_document(self, patient, file):
-        root = os.getcwd()
+    def save_document(self, patient, encounter, file):
+        root = os.path.dirname(os.path.abspath(__file__))
         workbook = openpyxl.load_workbook(f'{root}/templates/{file}.xlsx')
         worksheet = workbook['Sheet1']
         name_cell = worksheet['K8']
@@ -105,7 +105,7 @@ class ExportScreen(ModalScreen):
         patient_id = int(patient[0])
         first_name = patient[1]
         last_name = patient[2]
-        encounter_id = conf.get_last_patient_encounter(patient_id).encounter_id
+        encounter_id = encounter[0]
         prescription_type = file
         conf.save_prescription_file(patient_id, first_name, last_name, encounter_id, prescription_type, workbook)
         self.log_feedback('Document generated successfully.')
@@ -113,30 +113,42 @@ class ExportScreen(ModalScreen):
 
     def get_patient(self):
         calendar_screen = self.app.SCREENS.get('calendar')
-        patient_cursor = calendar_screen.patient_widget.cursor_coordinate
-        patient = calendar_screen.patient_widget.get_row_at(patient_cursor.row)
-        return patient
+        if calendar_screen.patient_widget.row_count > 1:
+            return
+        else:
+            patient_cursor = calendar_screen.patient_widget.cursor_coordinate
+            patient = calendar_screen.patient_widget.get_row_at(patient_cursor.row)
+            return patient
 
+    def get_encounter(self):
+        calendar_screen = self.app.SCREENS.get('calendar')
+        if calendar_screen.encounter_widget.row_count > 1:
+            return
+        else:
+            encounter_cursor = calendar_screen.encounter_widget.cursor_coordinate
+            encounter = calendar_screen.encounter_widget.get_row_at(encounter_cursor.row)
+            return encounter
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id in ["export", "print"]:
             selected_radiobutton = self.get_checked_radiobutton()
             try:
                 patient = self.get_patient()
+                encounter = self.get_encounter()
             except:
-                self.log_error('Please select a patient!')
+                self.log_error('Please select an encounter!')
                 return
 
             if selected_radiobutton == 'Ordonnance':
                 selected_checkboxes = self.get_checked_checkboxes()
                 if len(selected_checkboxes) != 0:
-                    self.save_ordonnance(patient, selected_checkboxes)
+                    self.save_ordonnance(patient,encounter, selected_checkboxes)
                 else:
                     self.log_error('please choose a prescription!')
                     return
                 
             elif selected_radiobutton in ['Arret 3 jours', 'Certificat', 'Pano', 'TLR', 'Pano+TLR']:
-                self.save_document(patient, selected_radiobutton)
+                self.save_document(patient,encounter, selected_radiobutton)
 
         elif event.button.id == "exit":
             self.app.pop_screen()
