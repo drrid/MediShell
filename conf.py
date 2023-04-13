@@ -3,6 +3,7 @@ from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from dotenv import load_dotenv
 import os
 from datetime import date, time, timedelta, datetime
+import openpyxl
 
 
 load_dotenv()
@@ -12,6 +13,16 @@ uri = os.getenv('URI')
 engine = create_engine(f'mysql+pymysql://root:{password}@{uri}', pool_recycle=3600)
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
+
+
+# Patient Class -----------------------------------------------------------------------------------------------------------
+class PrescriptionFile(Base):
+    __tablename__ = "prescription_file"
+    id = Column(Integer(), primary_key=True, autoincrement=True)
+    encounter_id = Column(Integer(), ForeignKey("encounter.encounter_id"))
+    file_path = Column(String(255))
+    prescription_type = Column(String(100))
+    encounter = relationship("Encounter", back_populates="prescription_files")
 
 # Encounter Class -----------------------------------------------------------------------------------------------------------
 class Encounter(Base):
@@ -25,6 +36,8 @@ class Encounter(Base):
     payment = Column(Integer(), default=0)
     treatment_cost = Column(Integer(), default=0)
     patient = relationship("Patient", back_populates="encounters")
+    prescription_files = relationship("PrescriptionFile", order_by=PrescriptionFile.id, back_populates="encounter")
+
 
     def __repr__(self):
         return f'{self.encounter_id},{self.rdv},{self.note},{self.payment},{self.treatment_cost}'
@@ -42,8 +55,8 @@ class Patient(Base):
 
     def __repr__(self):
         return f'{self.patient_id},{self.first_name},{self.last_name},{self.date_of_birth},{self.phone}'
-
 #---------------------------------------------------------------------------------------------------------------------------
+
 
 
 def init_db():
@@ -51,6 +64,29 @@ def init_db():
     Base.metadata.create_all(engine)
     Base.metadata.bind = engine
 
+def save_prescription_file(patient_id, first_name, last_name, encounter_id, prescription_type, workbook):
+    patient_folder = create_patient_folder(patient_id, first_name, last_name)
+    file_path = f"{patient_folder}/prescription_{encounter_id}_{prescription_type}.xlsx"
+    workbook.save(file_path)
+    prescription_file = PrescriptionFile(encounter_id=encounter_id, file_path=file_path, prescription_type=prescription_type)
+    save_to_db(prescription_file)
+
+def create_patient_folder(patient_id, first_name, last_name):
+    patient_folder = f"prescriptions/{patient_id}_{first_name}_{last_name}"
+    if not os.path.exists(patient_folder):
+        os.makedirs(patient_folder)
+    return patient_folder
+
+def get_last_patient_encounter(patient_id):
+    with Session() as session:
+        try:
+            last_encounter = session.query(Encounter).filter(
+                Encounter.patient_id == patient_id
+            ).order_by(Encounter.rdv.desc()).first()
+            return last_encounter
+        except Exception as e:
+            print(f"Error getting the last patient encounter: {e}")
+            return None
 
 def update_patient(patient_id, **kwargs):
     """Update the patient with the given ID using the provided keyword arguments."""

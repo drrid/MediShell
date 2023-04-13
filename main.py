@@ -80,8 +80,14 @@ class ExportScreen(ModalScreen):
         pres_cell.value = '\n'.join(prescription)
         date_cell.value = formatted_date
 
-        workbook.save(f'{root}/saved-xlsx/Ordonnance.xlsx')
-        self.log_feedback(f'"Ordonnance.xlsx" generated successfully.')
+        patient_id = int(patient[0])
+        first_name = patient[1]
+        last_name = patient[2]
+        encounter_id = conf.get_last_patient_encounter(patient_id).encounter_id
+        prescription_type = "ordonnance"
+        conf.save_prescription_file(patient_id, first_name, last_name, encounter_id, prescription_type, workbook)
+        self.log_feedback('Document generated successfully.')
+
 
     def save_document(self, patient, file):
         root = os.getcwd()
@@ -96,8 +102,13 @@ class ExportScreen(ModalScreen):
         name_cell.value = f'{patient[1]} {patient[2]}'
         date_cell.value = formatted_date
 
-        workbook.save(f'{root}/saved-xlsx/{file}.xlsx')
-        self.log_feedback(f'"{file}.xlsx" generated successfully.')
+        patient_id = int(patient[0])
+        first_name = patient[1]
+        last_name = patient[2]
+        encounter_id = conf.get_last_patient_encounter(patient_id).encounter_id
+        prescription_type = file
+        conf.save_prescription_file(patient_id, first_name, last_name, encounter_id, prescription_type, workbook)
+        self.log_feedback('Document generated successfully.')
     
 
     def get_patient(self):
