@@ -78,13 +78,8 @@ def save_prescription_file(patient_id, first_name, last_name, encounter_id, pres
 
     # Update the database with the file path
     update_encounter(encounter_id, prescription_file_path=file_path)
+    return file_path
 
-# def create_patient_folder(patient_id, first_name, last_name):
-#     root = os.path.dirname(os.path.abspath(__file__))
-#     patient_folder = f"{root}/prescriptions/{patient_id}_{first_name}_{last_name}"
-#     if not os.path.exists(patient_folder):
-#         os.makedirs(patient_folder)
-#     return patient_folder
 
 def get_last_patient_encounter(patient_id):
     with Session() as session:

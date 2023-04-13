@@ -9,6 +9,7 @@ import datetime as dt
 from dateutil import parser
 import asyncio
 import os
+import win32com.client
 
 from datetime import date, timedelta
 
@@ -85,8 +86,9 @@ class ExportScreen(ModalScreen):
         last_name = patient[2]
         encounter_id = encounter[0]
         prescription_type = "ordonnance"
-        conf.save_prescription_file(patient_id, first_name, last_name, encounter_id, prescription_type, workbook)
+        path = conf.save_prescription_file(patient_id, first_name, last_name, encounter_id, prescription_type, workbook)
         self.log_feedback('Document generated successfully.')
+        return path
 
 
     def save_document(self, patient, encounter, file):
@@ -107,8 +109,9 @@ class ExportScreen(ModalScreen):
         last_name = patient[2]
         encounter_id = encounter[0]
         prescription_type = file
-        conf.save_prescription_file(patient_id, first_name, last_name, encounter_id, prescription_type, workbook)
+        path = conf.save_prescription_file(patient_id, first_name, last_name, encounter_id, prescription_type, workbook)
         self.log_feedback('Document generated successfully.')
+        return path
     
 
     def get_patient(self):
@@ -142,16 +145,34 @@ class ExportScreen(ModalScreen):
             if selected_radiobutton == 'Ordonnance':
                 selected_checkboxes = self.get_checked_checkboxes()
                 if len(selected_checkboxes) != 0:
-                    self.save_ordonnance(patient,encounter, selected_checkboxes)
+                    path = self.save_ordonnance(patient,encounter, selected_checkboxes)
                 else:
                     self.log_error('please choose a prescription!')
                     return
+            
                 
             elif selected_radiobutton in ['Arret 3 jours', 'Certificat', 'Pano', 'TLR', 'Pano+TLR']:
-                self.save_document(patient,encounter, selected_radiobutton)
+                path = self.save_document(patient,encounter, selected_radiobutton)
+
+            if event.button.id == 'print':
+                try:
+                    self.print_excel_file(path)
+                except Exception as e:
+                    self.log_error(e)
 
         elif event.button.id == "exit":
             self.app.pop_screen()
+
+
+    def print_excel_file(self, file_path):
+        excel = win32com.client.Dispatch("Excel.Application")
+        excel.Visible = False 
+        try:
+            workbook = excel.Workbooks.Open(file_path)
+            workbook.PrintOut()
+            workbook.Close(SaveChanges=0)
+        finally:
+            excel.Quit()
 
 
     def log_feedback(self, msg):
