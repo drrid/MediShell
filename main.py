@@ -66,7 +66,7 @@ class ExportScreen(ModalScreen):
             if radiobutton.value:   
                 return str(radiobutton.label)
             
-    def save_ordonnance(self, patient, encounter, prescription):
+    def save_ordonnance(self, patient_id, encounter_id, prescription):
         root = os.path.dirname(os.path.abspath(__file__))
         workbook = openpyxl.load_workbook(f'{root}/templates/Ordonnance.xlsx')
         worksheet = workbook['Sheet1']
@@ -76,22 +76,18 @@ class ExportScreen(ModalScreen):
 
         today = dt.date.today()
         formatted_date = today.strftime('%d-%m-%Y')
-
-        name_cell.value = f'{patient[1]} {patient[2]}'
+        patient = conf.select_patient_by_id(patient_id)
+        name_cell.value = f'{patient.first_name} {patient.last_name}'
         pres_cell.value = '\n'.join(prescription)
         date_cell.value = formatted_date
 
-        patient_id = int(patient[0])
-        first_name = patient[1]
-        last_name = patient[2]
-        encounter_id = encounter[0]
         prescription_type = "ordonnance"
-        path = conf.save_prescription_file(patient_id, first_name, last_name, encounter_id, prescription_type, workbook)
+        path = conf.save_prescription_file(patient_id, patient.first_name, patient.last_name, encounter_id, prescription_type, workbook)
         self.log_feedback('Document generated successfully.')
         return path
 
 
-    def save_document(self, patient, encounter, file):
+    def save_document(self, patient_id, encounter_id, file):
         root = os.path.dirname(os.path.abspath(__file__))
         workbook = openpyxl.load_workbook(f'{root}/templates/{file}.xlsx')
         worksheet = workbook['Sheet1']
@@ -100,59 +96,73 @@ class ExportScreen(ModalScreen):
 
         today = dt.date.today()
         formatted_date = today.strftime('%d-%m-%Y')
+        patient = conf.select_patient_by_id(patient_id)
 
-        name_cell.value = f'{patient[1]} {patient[2]}'
+        name_cell.value = f'{patient.first_name} {patient.last_name}'
         date_cell.value = formatted_date
 
-        patient_id = int(patient[0])
-        first_name = patient[1]
-        last_name = patient[2]
-        encounter_id = encounter[0]
         prescription_type = file
-        path = conf.save_prescription_file(patient_id, first_name, last_name, encounter_id, prescription_type, workbook)
+        path = conf.save_prescription_file(patient_id, patient.first_name, patient.last_name, encounter_id, prescription_type, workbook)
         self.log_feedback('Document generated successfully.')
         return path
     
-
-    def get_patient(self):
+    def get_selected_data(self):
         calendar_screen = self.app.SCREENS.get('calendar')
-        if calendar_screen.patient_widget.row_count > 1:
-            return
-        else:
-            patient_cursor = calendar_screen.patient_widget.cursor_coordinate
-            patient = calendar_screen.patient_widget.get_row_at(patient_cursor.row)
-            return patient
+        cursor = calendar_screen.calendar_widget.cursor_coordinate
+        encounter_time = calendar_screen.get_datetime_from_cell(calendar_screen.week_index, cursor.row, cursor.column)
+        patient_id = conf.select_encounter_by_rdv(encounter_time).patient_id
+        encounter_id = conf.select_encounter_by_rdv(encounter_time).encounter_id
 
-    def get_encounter(self):
-        calendar_screen = self.app.SCREENS.get('calendar')
-        if calendar_screen.encounter_widget.row_count > 1:
-            return
-        else:
-            encounter_cursor = calendar_screen.encounter_widget.cursor_coordinate
-            encounter = calendar_screen.encounter_widget.get_row_at(encounter_cursor.row)
-            return encounter
+        return patient_id, encounter_id
+
+    # def get_patient(self):
+    #     calendar_screen = self.app.SCREENS.get('calendar')
+    #     if calendar_screen.patient_widget.row_count > 1:
+    #         return
+    #     else:
+    #         patient_cursor = calendar_screen.patient_widget.cursor_coordinate
+    #         patient = calendar_screen.patient_widget.get_row_at(patient_cursor.row)
+    #         return patient
+
+    # def get_encounter(self):
+    #     calendar_screen = self.app.SCREENS.get('calendar')
+    #     if calendar_screen.encounter_widget.row_count > 1:
+    #         return
+    #     else:
+    #         encounter_cursor = calendar_screen.encounter_widget.cursor_coordinate
+    #         encounter = calendar_screen.encounter_widget.get_row_at(encounter_cursor.row)
+    #         return encounter
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id in ["export", "print"]:
             selected_radiobutton = self.get_checked_radiobutton()
             try:
-                patient = self.get_patient()
-                encounter = self.get_encounter()
-            except:
-                self.log_error('Please select an encounter!')
+                patient_id, encounter_id = self.get_selected_data()
+                # patient = self.get_patient()
+                # encounter = self.get_encounter()
+            except Exception as e:
+                self.log_error(f'Please select an encounter!{e}')
                 return
 
             if selected_radiobutton == 'Ordonnance':
                 selected_checkboxes = self.get_checked_checkboxes()
                 if len(selected_checkboxes) != 0:
-                    path = self.save_ordonnance(patient,encounter, selected_checkboxes)
+                    try:
+                        path = self.save_ordonnance(patient_id,encounter_id, selected_checkboxes)
+                    except Exception as e:
+                        self.log_error(e)
+                        return
                 else:
                     self.log_error('please choose a prescription!')
                     return
             
                 
             elif selected_radiobutton in ['Arret 3 jours', 'Certificat', 'Pano', 'TLR', 'Pano+TLR']:
-                path = self.save_document(patient,encounter, selected_radiobutton)
+                try:
+                    path = self.save_document(patient_id,encounter_id, selected_radiobutton)
+                except Exception as e:
+                    self.log_error(e)
+                    return
 
             if event.button.id == 'print':
                 try:

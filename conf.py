@@ -177,15 +177,23 @@ def select_pt_encounter(encounter_id):
 def select_patient_by_details(first_name, last_name, phone, date_of_birth):
     with Session() as session:
         try:
-            patient2 = session.query(Patient).filter(Patient.first_name == first_name,
+            patient = session.query(Patient).filter(Patient.first_name == first_name,
                                                     Patient.last_name == last_name,
                                                     Patient.phone == phone,
                                                     Patient.date_of_birth == date_of_birth).first()
-            return patient2
+            return patient
         except Exception as e:
             print(f"Error selecting patient by details: {e}")
             return None
 
+def select_patient_by_id(patient_id):
+    with Session() as session:
+        try:
+            patient = session.query(Patient).filter(Patient.patient_id == patient_id).first()
+            return patient
+        except Exception as e:
+            print(f"Error selecting patient by details: {e}")
+            return None
 
 def calculate_owed_amount(patient_id):
     try:
