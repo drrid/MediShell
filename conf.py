@@ -11,6 +11,8 @@ password = os.getenv('DB_PASSWORD')
 uri = os.getenv('URI')
 
 engine = create_engine(f'mysql+pymysql://root:{password}@{uri}', pool_recycle=3600)
+
+# engine = create_engine('sqlite:///database.db')
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
 
@@ -228,7 +230,7 @@ def generate_schedule(week_index):
     today = date.today()
     # Find the nearest Saturday (0 = Saturday, 1 = Sunday, etc.)
     days_to_saturday = (5 - today.weekday()) % 7
-    start_date = today + timedelta(days=days_to_saturday) + timedelta(weeks=week_index - 1)
+    start_date = today + timedelta(days=days_to_saturday) + timedelta(weeks=week_index)
     end_date = start_date + timedelta(days=7)
     
     # Generate time slots
