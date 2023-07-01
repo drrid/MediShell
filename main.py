@@ -213,6 +213,7 @@ class Calendar(Screen):
         for c in ENC_CLMN:
             self.encounter_widget.add_column(f'{c[0]}', width=c[1])
 
+
         self.show_calendar(self.week_index)
         self.show_patients(first_name='')
 
@@ -322,13 +323,14 @@ class Calendar(Screen):
             patient_last_name = self.patient_widget.get_cell_at(Coordinate(self.patient_widget.cursor_coordinate.row, 2))
 
             selected_datetime = self.get_datetime_from_cell(self.week_index, cursor.row, cursor.column)
+            self.log_feedback(selected_datetime)
             conf.save_to_db(conf.Encounter(patient_id=patient_id, rdv=selected_datetime))
 
             self.calendar_widget.update_cell_at(cursor, f'{patient_first_name} {patient_last_name}')
             self.encounter_widget.clear()
             self.show_encounters(patient_id)
             self.color_todays_encounters()
-            self.log_feedback('Encounter added successfully')
+            # self.log_feedback('Encounter added successfully')
         except Exception as e:
             self.log_error(f"Error adding encounter: {e}")
 
@@ -336,7 +338,7 @@ class Calendar(Screen):
     def get_datetime_from_cell(self,week_index, row, column):
         today = date.today()
         days_to_saturday = (5 - today.weekday()) % 7
-        start_date = today + timedelta(days=days_to_saturday) + timedelta(weeks=week_index - 1)
+        start_date = today + timedelta(days=days_to_saturday) + timedelta(weeks=week_index)
         
         day = start_date + timedelta(days=column - 1)
         time_slot_start, _ = conf.generate_time_slot(9, 0, 20, 21)[row]
@@ -436,11 +438,15 @@ class Calendar(Screen):
                 self.encounter_widget.clear()
                 return
             
-            encounter_time = self.get_datetime_from_cell(self.week_index, cursor.row, cursor.column)
-            patient_id = conf.select_encounter_by_rdv(encounter_time).patient_id
-            encounter_id = conf.select_encounter_by_rdv(encounter_time).encounter_id
-            self.show_patients(patient_id=patient_id)
-            self.show_encounters(patient_id, encounter_id=encounter_id)
+            try:
+                encounter_time = self.get_datetime_from_cell(self.week_index, cursor.row, cursor.column)
+                patient_id = conf.select_encounter_by_rdv(encounter_time).patient_id
+                encounter_id = conf.select_encounter_by_rdv(encounter_time).encounter_id
+                self.show_patients(patient_id=patient_id)
+                self.show_encounters(patient_id, encounter_id=encounter_id)
+            except Exception as e:
+                self.log_error(e)
+
 
     def on_data_table_row_selected(self, message: DataTable.RowSelected):
         self.encounter_widget.clear()
