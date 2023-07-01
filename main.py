@@ -330,7 +330,7 @@ class Calendar(Screen):
             self.encounter_widget.clear()
             self.show_encounters(patient_id)
             self.color_todays_encounters()
-            # self.log_feedback('Encounter added successfully')
+            self.log_feedback('Encounter added successfully')
         except Exception as e:
             self.log_error(f"Error adding encounter: {e}")
 
