@@ -229,8 +229,11 @@ def generate_time_slot(start_hour, start_minute, duration, count):
 def generate_schedule(week_index):
     today = date.today()
     # Find the nearest Saturday (0 = Saturday, 1 = Sunday, etc.)
-    days_to_saturday = (5 - today.weekday()) % 7
-    start_date = today + timedelta(days=days_to_saturday) + timedelta(weeks=week_index)
+    # days_to_saturday = (5 - today.weekday()) % 7
+    days_to_saturday = (today.weekday()-5) % 7
+    # start_date = today + timedelta(days=days_to_saturday) + timedelta(weeks=week_index)
+    start_date = today - timedelta(days=days_to_saturday) + timedelta(weeks=week_index)
+    print(days_to_saturday)
     end_date = start_date + timedelta(days=7)
     
     # Generate time slots
@@ -272,5 +275,5 @@ init_db()
 
 
 
-# print(generate_schedule(0))
+print(generate_schedule(0))
 

@@ -9,7 +9,7 @@ import datetime as dt
 from dateutil import parser
 import asyncio
 import os
-import win32com.client
+# import win32com.client
 
 from datetime import date, timedelta
 
@@ -337,8 +337,10 @@ class Calendar(Screen):
 
     def get_datetime_from_cell(self,week_index, row, column):
         today = date.today()
-        days_to_saturday = (5 - today.weekday()) % 7
-        start_date = today + timedelta(days=days_to_saturday) + timedelta(weeks=week_index)
+        # days_to_saturday = (5 - today.weekday()) % 7
+        # start_date = today + timedelta(days=days_to_saturday) + timedelta(weeks=week_index)
+        days_to_saturday = (today.weekday() - 5) % 7
+        start_date = today - timedelta(days=days_to_saturday) + timedelta(weeks=week_index)
         
         day = start_date + timedelta(days=column - 1)
         time_slot_start, _ = conf.generate_time_slot(9, 0, 20, 21)[row]
