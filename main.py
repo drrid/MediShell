@@ -337,8 +337,6 @@ class Calendar(Screen):
 
     def get_datetime_from_cell(self,week_index, row, column):
         today = date.today()
-        # days_to_saturday = (5 - today.weekday()) % 7
-        # start_date = today + timedelta(days=days_to_saturday) + timedelta(weeks=week_index)
         days_to_saturday = (today.weekday() - 5) % 7
         start_date = today - timedelta(days=days_to_saturday) + timedelta(weeks=week_index)
         
