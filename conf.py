@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import os
 from datetime import date, time, timedelta, datetime
 import openpyxl
+import time as tm
 
 
 load_dotenv()
@@ -256,7 +257,14 @@ def generate_schedule(week_index):
     for encounter, pat in encounters:
         time_slot_index = (encounter.rdv.hour - 9) * 3 + encounter.rdv.minute // 20
         day_index = (encounter.rdv.date() - start_date).days
-        encounter_map[(time_slot_index, day_index)] = f"{pat.first_name} {pat.last_name}"
+
+        if today == encounter.rdv.date():
+            encounter_map[(time_slot_index, day_index)] = f"[bold yellow]{pat.first_name} {pat.last_name}"
+        elif '%' in encounter.note:
+            encounter_map[(time_slot_index, day_index)] = f"[bold red]{pat.first_name} {pat.last_name}"
+        else:
+            encounter_map[(time_slot_index, day_index)] = f"{pat.first_name} {pat.last_name}"
+
     
     for i, time_slot in enumerate(time_slots):
         slot_start, slot_end = time_slot
@@ -270,7 +278,9 @@ def generate_schedule(week_index):
 init_db()
 
 
+# start = tm.time()
 
 
 # print(generate_schedule(0))
+# print(tm.time()-start)
 

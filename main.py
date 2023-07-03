@@ -377,6 +377,7 @@ class Calendar(Screen):
         patients = iter(conf.select_all_starts_with(**kwargs))
         self.patient_widget.add_rows(patients)
 
+
     def show_encounters(self, pt_id, encounter_id='All'):
         self.encounter_widget.clear()
         if encounter_id == 'All':
@@ -387,6 +388,7 @@ class Calendar(Screen):
             encounter = iter(conf.select_pt_encounter(encounter_id))
             for row in encounter:
                 self.encounter_widget.add_row(*row, height=int(len(row[2])/20+1))
+
 
     def show_calendar(self, week_index):
         self.calendar_widget.clear(columns=True)
@@ -405,25 +407,6 @@ class Calendar(Screen):
 
         for row in schedule:
             table.add_row(*row, height=2)
-        # table.add_rows(schedule)
-        # self.log_feedback()
-        self.color_todays_encounters()
-
-
-    def color_todays_encounters(self):
-        table = self.query_one('#cal_table')
-        today = dt.datetime.today().date()
-
-        # Iterate through the columns
-        for col_idx in range(1, 8):
-            column_date = self.get_datetime_from_cell(self.week_index, 3, col_idx).date()
-
-            # Check if the column date is the current day
-            if column_date == today:
-                # Iterate through the rows
-                for row_idx in range(table.row_count):
-                    cell = table.get_cell_at(Coordinate(row_idx, col_idx))
-                    table.update_cell_at(Coordinate(row_idx, col_idx), f'[bold yellow]{cell}')
 
 
     def on_data_table_cell_selected(self, message: DataTable.CellSelected):
