@@ -157,11 +157,7 @@ class ExportScreen(ModalScreen):
 class PrintExportScreen(ModalScreen):
 
     def compose(self):
-        self.selectionlist = SelectionList[int](
-                        ('test selection', 0),
-                        ('test2', 2)
-                    )
-        
+        self.selectionlist = SelectionList[int]()
         with Grid(id='dialog'):
             with Horizontal(id='selection'):
                 with Vertical(id='right_cnt'):
@@ -180,7 +176,7 @@ class PrintExportScreen(ModalScreen):
 
     def on_mount(self):
         self.selectionlist.border_title = 'print jobs'
-        # self.selectionlist.add_options([('ghgh', 3), ('nnnn', 4)])
+        self.selectionlist.add_options([('ghgh', 3), ('nnnn', 4)])
 
 
     def get_checked_checkboxes(self):
@@ -299,7 +295,6 @@ class Calendar(Screen):
         self.patient_widget = DataTable(id='pt_table', zebra_stripes=True, fixed_columns=1)
         self.patient_widget.cursor_type = 'row'
 
-
         self.inputs_container = Vertical(Horizontal(
                                     Input('', placeholder='First Name', id='fname'),Input('', placeholder='Last Name', id='lname'),
                                     Input('', placeholder='Phone', id='phone'),Input('', placeholder='Date Of Birth', id='dob'),
@@ -325,7 +320,7 @@ class Calendar(Screen):
     
     async def update_calendar_periodically(self) -> None:
         while True:
-            await asyncio.sleep(60)  # Update every 60 seconds (1 minute)
+            await asyncio.sleep(5)  # Update every 60 seconds (1 minute)
             self.show_calendar(self.week_index)
 
     def refresh_tables(self):
@@ -486,12 +481,10 @@ class Calendar(Screen):
         self.query_one('#feedback').update(f'[bold red]{str(msg)}')
 
     def action_next_week(self):
-        self.calendar_widget.clear(columns=True)
         self.week_index += 1 
         self.show_calendar(self.week_index)
 
     def action_previous_week(self):
-        self.calendar_widget.clear(columns=True)
         self.week_index -= 1 
         self.show_calendar(self.week_index)
 
@@ -518,6 +511,9 @@ class Calendar(Screen):
 
 
     def show_calendar(self, week_index):
+        current_row = self.calendar_widget.cursor_row
+        current_column = self.calendar_widget.cursor_column
+
         self.calendar_widget.clear(columns=True)
         schedule = iter(conf.generate_schedule(week_index))
         table = self.query_one('#cal_table')
@@ -534,6 +530,8 @@ class Calendar(Screen):
 
         for row in schedule:
             table.add_row(*row, height=2)
+
+        self.calendar_widget.move_cursor(row=current_row, column=current_column, animate=True)
 
 
     def on_data_table_cell_selected(self, message: DataTable.CellSelected):
