@@ -180,6 +180,8 @@ class PrintExportScreen(ModalScreen):
 
     def on_mount(self):
         self.selectionlist.border_title = 'print jobs'
+        # self.selectionlist.add_options([('ghgh', 3), ('nnnn', 4)])
+
 
     def get_checked_checkboxes(self):
         checked_checkboxes = []
