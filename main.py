@@ -152,6 +152,134 @@ class ExportScreen(ModalScreen):
         self.query_one('#feedback_popup').update(f'[bold red]{str(msg)}')
 
 
+
+# Printing Export Screen --------------------------------------------------------------------------------------------------------------------------------------------------
+class PrintExportScreen(ModalScreen):
+
+    def compose(self):
+        self.selectionlist = SelectionList[int](
+                        ('test selection', 0),
+                        ('test2', 2)
+                    )
+        
+        with Grid(id='dialog'):
+            with Horizontal(id='selection'):
+                with Vertical(id='right_cnt'):
+                    with RadioSet(id='exports'):
+                        yield RadioButton('selected encounter', id='enc-select', value=True)
+                        yield RadioButton('this week ', id='week-select')
+                        yield RadioButton('patient', id='pt-select')
+                    yield(Static(id='feedback_popup'))
+                with VerticalScroll(id='printjobs'):
+                    yield self.selectionlist
+            with Horizontal(id='buttons'):
+                yield Button('export', id='export', variant='primary')
+                yield Button('print', id='print', variant='primary')
+                yield Button('exit', id='exit', variant='error')
+
+
+    def on_mount(self):
+        self.selectionlist.border_title = 'print jobs'
+
+    def get_checked_checkboxes(self):
+        checked_checkboxes = []
+        for checkbox in self.query(Checkbox):
+            if checkbox.value:
+                checked_checkboxes.append(str(checkbox.label))
+        return checked_checkboxes
+    
+    def get_checked_radiobutton(self):
+        for radiobutton in self.query(RadioButton):
+            if radiobutton.value:   
+                return str(radiobutton.label)
+            
+    def save_document(self, patient_id, encounter_id, file, prescription=None):
+        root = os.path.dirname(os.path.abspath(__file__))
+        workbook = openpyxl.load_workbook(f'{root}/templates/{file}.xlsx')
+        worksheet = workbook['Sheet1']
+        name_cell = worksheet['K8']
+        date_cell = worksheet['O8']
+
+        today = dt.date.today()
+        formatted_date = today.strftime('%d-%m-%Y')
+        patient = conf.select_patient_by_id(patient_id)
+
+        name_cell.value = f'{patient.first_name} {patient.last_name}'
+        date_cell.value = formatted_date
+
+        if prescription:
+            pres_cell = worksheet['K13']
+            pres_cell.value = '\n'.join(prescription)
+
+        document_type = file
+        path = conf.save_prescription_file(patient_id, patient.first_name, patient.last_name, encounter_id, document_type, workbook)
+        self.log_feedback('Document generated successfully.')
+        return path
+
+    def get_selected_data(self):
+        calendar_screen = self.app.SCREENS.get('calendar')
+        cursor = calendar_screen.calendar_widget.cursor_coordinate
+        encounter_time = calendar_screen.get_datetime_from_cell(calendar_screen.week_index, cursor.row, cursor.column)
+        encounter = conf.select_encounter_by_rdv(encounter_time)
+        return encounter.patient_id, encounter.encounter_id
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id in ["export", "print"]:
+            selected_radiobutton = self.get_checked_radiobutton()
+            try:
+                patient_id, encounter_id = self.get_selected_data()
+            except Exception as e:
+                self.log_error(f'Please select an encounter!{e}')
+                return
+
+            if selected_radiobutton == 'Ordonnance':
+                selected_checkboxes = self.get_checked_checkboxes()
+                if len(selected_checkboxes) != 0:
+                    try:
+                        path = self.save_document(patient_id, encounter_id, selected_radiobutton, selected_checkboxes)
+                    except Exception as e:
+                        self.log_error(e)
+                        return
+                else:
+                    self.log_error('Please choose a prescription!')
+                    return
+
+            elif selected_radiobutton in ['Arret 3 jours', 'Certificat', 'Pano', 'TLR', 'Pano+TLR']:
+                try:
+                    path = self.save_document(patient_id, encounter_id, selected_radiobutton)
+                except Exception as e:
+                    self.log_error(e)
+                    return
+
+            if event.button.id == 'print':
+                try:
+                    self.print_excel_file(path)
+                except Exception as e:
+                    self.log_error(e)
+
+        elif event.button.id == "exit":
+            self.app.pop_screen()
+
+
+    def print_excel_file(self, file_path):
+        excel = win32com.client.Dispatch("Excel.Application")
+        excel.Visible = False 
+        try:
+            workbook = excel.Workbooks.Open(file_path)
+            workbook.PrintOut()
+            workbook.Close(SaveChanges=0)
+        finally:
+            excel.Quit()
+
+
+    def log_feedback(self, msg):
+        self.query_one('#feedback_popup').update(f'[bold #11696b]{str(msg)}')
+
+    def log_error(self, msg):
+        self.query_one('#feedback_popup').update(f'[bold red]{str(msg)}')
+
+
+
 # Calendar Screen --------------------------------------------------------------------------------------------------------------------------------------------------
 class Calendar(Screen):
     BINDINGS = [("ctrl+left", "previous_week", "Previous Week"),
@@ -454,7 +582,7 @@ class PMSApp(App):
         self.push_screen(self.SCREENS.get('calendar'))
 
     def action_request_export(self) -> None:
-        self.push_screen(ExportScreen())
+        self.push_screen(PrintExportScreen())
 
 if __name__ == "__main__":
     app = PMSApp()

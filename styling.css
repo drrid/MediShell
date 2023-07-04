@@ -74,7 +74,7 @@
   
   /* /////////////////////////////////////////////////////////////////////////////////////////////////////////// */
 
-  ExportScreen {
+  PrintExportScreen {
     align: center middle;
 }
 
@@ -95,8 +95,8 @@ background: $surface;
 
 }
 
-#medicament {
-  width: 7fr;
+#printjobs {
+  width: 6fr;
 }
 
 /* #exports {
@@ -131,3 +131,61 @@ background: $surface;
 #quit {
   width: 1fr;
 }
+
+
+
+ /* /////////////////////////////////////////////////////////////////////////////////////////////////////////// */
+
+ /* ExportScreen {
+  align: center middle;
+} */
+
+/* #dialog{
+
+layout: grid;
+grid-size: 1 2;
+row-span: 2;
+grid-rows: 7fr 1fr;
+width: 70;
+height: 20;
+padding: 0 1;
+border: thick $background 80%;
+background: $surface;
+} */
+
+/* #selection {
+
+} */
+
+/* #medicament {
+width: 7fr;
+} */
+
+/* #exports {
+height: 2fr;
+} */
+
+/* #right_cnt {
+width: 3fr;
+} */
+
+
+/* #feedback_popup {
+height: 1fr
+} */
+
+/* #buttons {
+
+} */
+
+/* #export {
+width: 1fr;
+} */
+
+/* #print {
+width: 1fr;
+} */
+
+/* #quit {
+width: 1fr;
+} */
