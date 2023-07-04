@@ -158,6 +158,15 @@ def select_encounter_by_rdv(rdv):
         except Exception as e:
             print(f"Error selecting encounter by rdv: {e}")
             return None
+        
+def select_all_patients():
+    with Session() as session:
+        try:
+            patients = session.query(Patient).all()
+            return patients
+        except Exception as e:
+            print(f"Error selecting patients: {e}")
+            return None
     
 def select_all_pt_encounters(patient_id):
     with Session() as session:
@@ -280,6 +289,8 @@ def generate_schedule(week_index):
 
 init_db()
 
+
+# print(iter(select_all_starts_with()))
 
 # start = tm.time()
 

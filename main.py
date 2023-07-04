@@ -287,6 +287,7 @@ class Calendar(Screen):
             ("f5", "clear_inputs", "Clear"),
             ("f10", "request_export", "Export")]
     week_index = reactive(0)
+    row_index_id = {}
 
     def compose(self):
         self.table = DataTable()
@@ -339,7 +340,8 @@ class Calendar(Screen):
 
 
         self.show_calendar(self.week_index)
-        self.show_patients(first_name='')
+        self.show_patients()
+        self.show_encounters()
 
     def on_input_submitted(self, event: Input.Submitted):
         try:
@@ -370,10 +372,14 @@ class Calendar(Screen):
             else:
                 self.query_one('#phone').value = ''
 
-            patients = iter(conf.select_all_starts_with(first_name=fname, last_name=lname, phone=phone))
+            patients = conf.select_all_starts_with(first_name=fname, last_name=lname, phone=phone)
             if patients is not None:
-                self.patient_widget.clear()
-                self.patient_widget.add_rows(patients)
+                # self.log_feedback(patients)
+                patient_id = patients[0][0]
+                row_index = self.row_index_id.get(patient_id)
+                self.patient_widget.move_cursor(row=row_index)
+                self.show_encounters()
+
         except Exception as e:
             self.log_error(e)
 
@@ -427,7 +433,6 @@ class Calendar(Screen):
             conf.delete_encounter(encounter_id)
             self.calendar_widget.update_cell_at(cursor, '_')
             self.encounter_widget.clear()
-            self.show_patients(first_name='')
             self.log_feedback('Encounter deleted successfully.')
         except Exception as e:
             self.log_error(e)
@@ -451,7 +456,7 @@ class Calendar(Screen):
 
             self.calendar_widget.update_cell_at(cursor, f'{patient_first_name} {patient_last_name}')
             self.encounter_widget.clear()
-            self.show_encounters(patient_id)
+            # self.show_encounters(patient_id)
             self.log_feedback('Encounter added successfully')
         except Exception as e:
             self.log_error(f"Error adding encounter: {e}")
@@ -473,7 +478,7 @@ class Calendar(Screen):
             patient = conf.Patient(first_name=first_name, last_name=last_name, phone=phone, date_of_birth=date_of_birth)
             conf.save_to_db(patient)
             self.log_feedback("Patient added successfully.")
-            self.show_patients(first_name='')
+            self.show_patients()
         except Exception as e:
             self.log_error(f"Error adding patient: {e}")
 
@@ -492,22 +497,38 @@ class Calendar(Screen):
         self.query_one('#feedback').update(f'[bold #11696b]{str(msg)}')
 
 
-    def show_patients(self, **kwargs):
+    def show_patients(self):
         self.patient_widget.clear()
-        patients = iter(conf.select_all_starts_with(**kwargs))
-        self.patient_widget.add_rows(patients)
+        patients = iter(conf.select_all_starts_with())
+        self.row_index_id = {}
+        for index, patient in enumerate(patients):
+            patient_id = patient[0]
+            self.patient_widget.add_row(*patient, key=patient_id)
+            self.row_index_id.update({patient_id : index})
+            # self.log_feedback()
 
-
-    def show_encounters(self, pt_id, encounter_id='All'):
-        self.encounter_widget.clear()
-        if encounter_id == 'All':
+    def show_encounters(self):
+        try:
+            self.encounter_widget.clear()
+            pt_id = int(self.patient_widget.get_row_at(self.patient_widget.cursor_row)[0])
+            self.log_feedback(pt_id)
             encounters = iter(conf.select_all_pt_encounters(pt_id))
             for row in encounters:
                 self.encounter_widget.add_row(*row, height=int(len(row[2])/20+1))
-        else:
-            encounter = iter(conf.select_pt_encounter(encounter_id))
-            for row in encounter:
-                self.encounter_widget.add_row(*row, height=int(len(row[2])/20+1))
+        except Exception as e:
+            self.log_error(e)
+
+
+    # def show_encounters(self, pt_id, encounter_id='All'):
+    #     self.encounter_widget.clear()
+    #     if encounter_id == 'All':
+    #         encounters = iter(conf.select_all_pt_encounters(pt_id))
+    #         for row in encounters:
+    #             self.encounter_widget.add_row(*row, height=int(len(row[2])/20+1))
+    #     else:
+    #         encounter = iter(conf.select_pt_encounter(encounter_id))
+    #         for row in encounter:
+    #             self.encounter_widget.add_row(*row, height=int(len(row[2])/20+1))
 
 
     def show_calendar(self, week_index):
@@ -532,6 +553,7 @@ class Calendar(Screen):
             table.add_row(*row, height=2)
 
         self.calendar_widget.move_cursor(row=current_row, column=current_column, animate=True)
+        self.selected_calendar()
 
 
     def on_data_table_cell_selected(self, message: DataTable.CellSelected):
@@ -539,27 +561,32 @@ class Calendar(Screen):
             self.query_one('#notes').focus()
             self.query_one('#notes').value = ''
         if message.control.id == 'cal_table':
-            cursor = self.calendar_widget.cursor_coordinate
-            cursor_value = self.calendar_widget.get_cell_at(cursor)
-            if '_' in cursor_value or ':' in cursor_value:
-                self.show_patients(first_name='')
-                self.encounter_widget.clear()
-                return
-            
-            try:
-                encounter_time = self.get_datetime_from_cell(self.week_index, cursor.row, cursor.column)
-                patient_id = conf.select_encounter_by_rdv(encounter_time).patient_id
-                encounter_id = conf.select_encounter_by_rdv(encounter_time).encounter_id
-                self.show_patients(patient_id=patient_id)
-                self.show_encounters(patient_id, encounter_id=encounter_id)
-            except Exception as e:
-                self.log_error(e)
+            self.selected_calendar()
+
+        
+    def selected_calendar(self):
+        cursor = self.calendar_widget.cursor_coordinate
+        cursor_value = self.calendar_widget.get_cell_at(cursor)
+        if '_' in cursor_value or ':' in cursor_value:
+            # self.show_patients()
+            # self.encounter_widget.clear()
+            return
+        
+        try:
+            encounter_time = self.get_datetime_from_cell(self.week_index, cursor.row, cursor.column)
+            patient_id = conf.select_encounter_by_rdv(encounter_time).patient_id
+            encounter_id = conf.select_encounter_by_rdv(encounter_time).encounter_id
+
+            row_index = self.row_index_id.get(str(patient_id))
+            # self.patient_widget.move_cursor(row=row_index, animate=True)
+
+            # self.show_encounters(patient_id, encounter_id=encounter_id)
+        except Exception as e:
+            self.log_error(e)
 
 
     def on_data_table_row_selected(self, message: DataTable.RowSelected):
-        self.encounter_widget.clear()
-        pt_id = int(self.patient_widget.get_row(message.row_key)[0])
-        self.show_encounters(pt_id)
+        self.show_encounters()
             
 
     
