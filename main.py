@@ -1,6 +1,6 @@
 from textual.app import App
 from textual.screen import Screen, ModalScreen
-from textual.widgets import Static, Footer, Header, Input, DataTable, Button, RadioButton, RadioSet, Checkbox, ListView, ListItem, Label
+from textual.widgets import Static, Footer, Header, Input, DataTable, Button, RadioButton, RadioSet, Checkbox, SelectionList, ListView, ListItem, Label
 from textual.coordinate import Coordinate
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll, Grid
 from textual.reactive import reactive
@@ -197,7 +197,6 @@ class Calendar(Screen):
         while True:
             await asyncio.sleep(60)  # Update every 60 seconds (1 minute)
             self.show_calendar(self.week_index)
-            self.color_todays_encounters()
 
     def refresh_tables(self):
         self.show_calendar(self.week_index)
@@ -302,7 +301,6 @@ class Calendar(Screen):
             encounter_id = conf.select_encounter_by_rdv(encounter_time).encounter_id
             conf.delete_encounter(encounter_id)
             self.calendar_widget.update_cell_at(cursor, '_')
-            self.color_todays_encounters()
             self.encounter_widget.clear()
             self.show_patients(first_name='')
             self.log_feedback('Encounter deleted successfully.')
@@ -329,7 +327,6 @@ class Calendar(Screen):
             self.calendar_widget.update_cell_at(cursor, f'{patient_first_name} {patient_last_name}')
             self.encounter_widget.clear()
             self.show_encounters(patient_id)
-            self.color_todays_encounters()
             self.log_feedback('Encounter added successfully')
         except Exception as e:
             self.log_error(f"Error adding encounter: {e}")
