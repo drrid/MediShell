@@ -260,8 +260,11 @@ def generate_schedule(week_index):
 
         if today == encounter.rdv.date():
             encounter_map[(time_slot_index, day_index)] = f"[bold yellow]{pat.first_name} {pat.last_name}"
+            if '%' in encounter.note:
+                encounter_map[(time_slot_index, day_index)] = f"[bold yellow underline]{pat.first_name} {pat.last_name}"
+                
         elif '%' in encounter.note:
-            encounter_map[(time_slot_index, day_index)] = f"[bold red]{pat.first_name} {pat.last_name}"
+            encounter_map[(time_slot_index, day_index)] = f"[bold underline]{pat.first_name} {pat.last_name}"
         else:
             encounter_map[(time_slot_index, day_index)] = f"{pat.first_name} {pat.last_name}"
 
