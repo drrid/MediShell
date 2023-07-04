@@ -11,6 +11,8 @@ import asyncio
 import os
 # import win32com.client
 
+import time as tm
+
 from datetime import date, timedelta
 
 import openpyxl
@@ -288,6 +290,7 @@ class Calendar(Screen):
             ("f10", "request_export", "Export")]
     week_index = reactive(0)
     row_index_id = {}
+    row_index_enc_id = {}
 
     def compose(self):
         self.table = DataTable()
@@ -513,8 +516,10 @@ class Calendar(Screen):
             pt_id = int(self.patient_widget.get_row_at(self.patient_widget.cursor_row)[0])
             self.log_feedback(pt_id)
             encounters = iter(conf.select_all_pt_encounters(pt_id))
-            for row in encounters:
+            for index, row in enumerate(encounters):
+                encounter_id = row[0]
                 self.encounter_widget.add_row(*row, height=int(len(row[2])/20+1))
+                self.row_index_enc_id.update({encounter_id : index})
         except Exception as e:
             self.log_error(e)
 
@@ -573,19 +578,29 @@ class Calendar(Screen):
             return
         
         try:
+            # start = tm.time()
             encounter_time = self.get_datetime_from_cell(self.week_index, cursor.row, cursor.column)
-            patient_id = conf.select_encounter_by_rdv(encounter_time).patient_id
-            encounter_id = conf.select_encounter_by_rdv(encounter_time).encounter_id
+            encounter = conf.select_encounter_by_rdv(encounter_time)
+            patient_id = encounter.patient_id
+            encounter_id = encounter.encounter_id
 
             row_index = self.row_index_id.get(str(patient_id))
-            # self.patient_widget.move_cursor(row=row_index, animate=True)
+            row_index_enc = self.row_index_enc_id.get(str(encounter_id))
+            self.patient_widget.move_cursor(row=row_index, animate=True)
+            self.show_encounters()
 
-            # self.show_encounters(patient_id, encounter_id=encounter_id)
+            # start = tm.time()
+            self.encounter_widget.move_cursor(row=row_index_enc, column=2)
+            end = tm.time()
+
+            # self.log_feedback(end-start)
+
         except Exception as e:
             self.log_error(e)
 
 
     def on_data_table_row_selected(self, message: DataTable.RowSelected):
+        self.calendar_widget.move_cursor(row=0, column=0)
         self.show_encounters()
             
 
