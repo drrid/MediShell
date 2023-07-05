@@ -14,7 +14,6 @@ import os
 import time as tm
 
 from datetime import date, timedelta
-
 import openpyxl
 
 
@@ -146,13 +145,11 @@ class ExportScreen(ModalScreen):
         finally:
             excel.Quit()
 
-
     def log_feedback(self, msg):
         self.query_one('#feedback_popup').update(f'[bold #11696b]{str(msg)}')
 
     def log_error(self, msg):
         self.query_one('#feedback_popup').update(f'[bold red]{str(msg)}')
-
 
 
 # Printing Export Screen --------------------------------------------------------------------------------------------------------------------------------------------------
@@ -366,25 +363,26 @@ class Calendar(Screen):
 
 
     def on_input_changed(self, event: Input.Changed):
-        try:
-            fname = self.query_one('#fname').value
-            lname = self.query_one('#lname').value
-            phone = self.query_one('#phone').value
-            if phone.isdigit():
-                phone = int(phone)
-            else:
-                self.query_one('#phone').value = ''
+        if event.input.id != 'notes':
+            try:
+                fname = self.query_one('#fname').value
+                lname = self.query_one('#lname').value
+                phone = self.query_one('#phone').value
+                if phone.isdigit():
+                    phone = int(phone)
+                else:
+                    self.query_one('#phone').value = ''
 
-            patients = conf.select_all_starts_with(first_name=fname, last_name=lname, phone=phone)
-            if patients is not None:
-                # self.log_feedback(patients)
-                patient_id = patients[0][0]
-                row_index = self.row_index_id.get(patient_id)
-                self.patient_widget.move_cursor(row=row_index)
-                self.show_encounters()
+                patients = conf.select_all_starts_with(first_name=fname, last_name=lname, phone=phone)
+                if patients is not None:
+                    # self.log_feedback(patients)
+                    patient_id = patients[0][0]
+                    row_index = self.row_index_id.get(patient_id)
+                    self.patient_widget.move_cursor(row=row_index)
+                    self.show_encounters()
 
-        except Exception as e:
-            self.log_error(e)
+            except Exception as e:
+                self.log_error(e)
 
 
     def action_clear_inputs(self):
@@ -479,11 +477,20 @@ class Calendar(Screen):
     def add_patient(self, first_name, last_name, phone, date_of_birth):
         try:
             patient = conf.Patient(first_name=first_name, last_name=last_name, phone=phone, date_of_birth=date_of_birth)
-            conf.save_to_db(patient)
+            patient_id = conf.save_to_db(patient)
             self.log_feedback("Patient added successfully.")
             self.show_patients()
+            row_index = self.row_index_id.get(str(patient_id))
+            self.patient_widget.move_cursor(row=row_index)
+            foldername = f"Z:\\patients\\{patient_id} {patient.first_name} {patient.last_name}"
+            isExist = os.path.exists(f'Z:\\patients\\{foldername}')
+            self.log_feedback(foldername)
+            if not isExist:
+                os.makedirs(foldername)
+
         except Exception as e:
             self.log_error(f"Error adding patient: {e}")
+
 
     def log_error(self, msg):
         self.query_one('#feedback').update(f'[bold red]{str(msg)}')
@@ -514,7 +521,7 @@ class Calendar(Screen):
         try:
             self.encounter_widget.clear()
             pt_id = int(self.patient_widget.get_row_at(self.patient_widget.cursor_row)[0])
-            self.log_feedback(pt_id)
+            # self.log_feedback(pt_id)
             encounters = iter(conf.select_all_pt_encounters(pt_id))
             for index, row in enumerate(encounters):
                 encounter_id = row[0]

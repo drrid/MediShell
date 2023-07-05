@@ -116,6 +116,8 @@ def save_to_db(record):
         try:
             session.add(record)
             session.commit()
+            generated_id = record.patient_id
+            return generated_id
         except Exception as e:
             session.rollback()
             print(e)
