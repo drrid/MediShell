@@ -9,6 +9,7 @@ import datetime as dt
 from dateutil import parser
 import asyncio
 import os
+import re
 # import win32com.client
 
 import time as tm
@@ -161,9 +162,10 @@ class PrintExportScreen(ModalScreen):
             with Horizontal(id='selection'):
                 with Vertical(id='right_cnt'):
                     with RadioSet(id='exports'):
-                        yield RadioButton('selected encounter', id='enc-select', value=True)
-                        yield RadioButton('this week ', id='week-select')
-                        yield RadioButton('patient', id='pt-select')
+                        yield RadioButton('Upper', id='Upper', value=True)
+                        yield RadioButton('Lower ', id='Lower')
+                        # yield RadioButton('patient', id='pt-select')
+                    yield Button('toggle all', id='toggle-all')
                     yield(Static(id='feedback_popup'))
                 with VerticalScroll(id='printjobs'):
                     yield self.selectionlist
@@ -174,8 +176,31 @@ class PrintExportScreen(ModalScreen):
 
 
     def on_mount(self):
-        self.selectionlist.border_title = 'print jobs'
-        self.selectionlist.add_options([('ghgh', 3), ('nnnn', 4)])
+        self.show_selectionlist()
+
+    
+    def show_selectionlist(self):
+        self.selectionlist.clear_options()
+        selected_radio = self.query_one('#exports').pressed_button.id
+        self.log_feedback(selected_radio)
+        try:
+            pt_id, enc_id = self.get_selected_data()
+            patient = conf.select_patient_by_id(pt_id)
+            pt_dir = f'Z:\\patients\\{pt_id} {patient.first_name} {patient.last_name}'
+            for file in os.listdir(pt_dir):
+                if file.endswith(f'{selected_radio}.stl'):
+                    match = re.search(r'\b\d+\b', file)
+                    if match:
+                        number = match.group()
+                        self.selectionlist.add_option((f'step {number}', int(number)))
+
+        except Exception as e:
+            self.log_error(str(e))
+        # self.selectionlist.border_title = 'print jobs'
+        # self.selectionlist.add_options([('ghgh', 3), ('nnnn', 4)])
+
+    def on_radio_set_changed(self, event: RadioSet.Changed):
+        self.show_selectionlist()
 
 
     def get_checked_checkboxes(self):
