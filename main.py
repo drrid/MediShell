@@ -10,6 +10,7 @@ from dateutil import parser
 import asyncio
 import os
 import re
+from sys import platform
 # import win32com.client
 
 import time as tm
@@ -182,11 +183,14 @@ class PrintExportScreen(ModalScreen):
     def show_selectionlist(self):
         self.selectionlist.clear_options()
         selected_radio = self.query_one('#exports').pressed_button.id
-        self.log_feedback(selected_radio)
+        # self.log_feedback(platform)
         try:
             pt_id, enc_id = self.get_selected_data()
             patient = conf.select_patient_by_id(pt_id)
-            pt_dir = f'Z:\\patients\\{pt_id} {patient.first_name} {patient.last_name}'
+            if platform == 'darwin':
+                pt_dir = f'/Volumes/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}'
+            else:
+                pt_dir = f'Z:\\patients\\{pt_id} {patient.first_name} {patient.last_name}'
             for file in os.listdir(pt_dir):
                 if file.endswith(f'{selected_radio}.stl'):
                     match = re.search(r'\b\d+\b', file)
