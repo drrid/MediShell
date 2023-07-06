@@ -264,8 +264,6 @@ class PrintExportScreen(ModalScreen):
                 shutil.copyfile(f'{pt_dir}/{file}', f'/Users/tarek/Desktop/{file}')
             
             
-
-
         elif event.button.id == 'toggle-all':
             self.selectionlist.toggle_all()
 
