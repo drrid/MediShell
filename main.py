@@ -11,7 +11,9 @@ import asyncio
 import os
 import re
 from sys import platform
-# import win32com.client
+
+if platform == 'windows':
+    import win32com.client
 
 import time as tm
 
