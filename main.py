@@ -199,6 +199,7 @@ class PrintExportScreen(ModalScreen):
                     if match:
                         number = match.group()
                         self.selectionlist.add_option((f'step {number}', int(number)))
+                        self.selectionlist.select_all()
 
         except Exception as e:
             self.log_error(str(e))
@@ -285,6 +286,9 @@ class PrintExportScreen(ModalScreen):
                 except Exception as e:
                     self.log_error(e)
 
+        elif event.button.id == 'toggle-all':
+            self.selectionlist.toggle_all()
+            
         elif event.button.id == "exit":
             self.app.pop_screen()
 
