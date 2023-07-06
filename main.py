@@ -11,6 +11,7 @@ import asyncio
 import os
 import re
 from sys import platform
+import shutil
 
 if platform == 'windows':
     import win32com.client
@@ -198,7 +199,7 @@ class PrintExportScreen(ModalScreen):
                     match = re.search(r'\b\d+\b', file)
                     if match:
                         number = match.group()
-                        self.selectionlist.add_option((f'step {number}', int(number)))
+                        self.selectionlist.add_option((f'step {number}', file))
                         self.selectionlist.select_all()
 
         except Exception as e:
@@ -208,7 +209,6 @@ class PrintExportScreen(ModalScreen):
 
     def on_radio_set_changed(self, event: RadioSet.Changed):
         self.show_selectionlist()
-
 
     def get_checked_checkboxes(self):
         checked_checkboxes = []
@@ -254,41 +254,21 @@ class PrintExportScreen(ModalScreen):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id in ["export", "print"]:
-            selected_radiobutton = self.get_checked_radiobutton()
-            try:
-                patient_id, encounter_id = self.get_selected_data()
-            except Exception as e:
-                self.log_error(f'Please select an encounter!{e}')
-                return
+            pt_id, enc_id = self.get_selected_data()
+            patient = conf.select_patient_by_id(pt_id)
+            if platform == 'darwin':
+                pt_dir = f'/Volumes/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}'
+            else:
+                pt_dir = f'Z:\\patients\\{pt_id} {patient.first_name} {patient.last_name}'
+            for file in self.selectionlist.selected:
+                shutil.copyfile(f'{pt_dir}/{file}', f'/Users/tarek/Desktop/{file}')
+            
+            
 
-            if selected_radiobutton == 'Ordonnance':
-                selected_checkboxes = self.get_checked_checkboxes()
-                if len(selected_checkboxes) != 0:
-                    try:
-                        path = self.save_document(patient_id, encounter_id, selected_radiobutton, selected_checkboxes)
-                    except Exception as e:
-                        self.log_error(e)
-                        return
-                else:
-                    self.log_error('Please choose a prescription!')
-                    return
-
-            elif selected_radiobutton in ['Arret 3 jours', 'Certificat', 'Pano', 'TLR', 'Pano+TLR']:
-                try:
-                    path = self.save_document(patient_id, encounter_id, selected_radiobutton)
-                except Exception as e:
-                    self.log_error(e)
-                    return
-
-            if event.button.id == 'print':
-                try:
-                    self.print_excel_file(path)
-                except Exception as e:
-                    self.log_error(e)
 
         elif event.button.id == 'toggle-all':
             self.selectionlist.toggle_all()
-            
+
         elif event.button.id == "exit":
             self.app.pop_screen()
 
