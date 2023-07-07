@@ -12,6 +12,8 @@ import os
 import re
 from sys import platform
 import shutil
+import paramiko
+from dotenv import load_dotenv
 
 if platform == 'windows':
     import win32com.client
@@ -21,6 +23,11 @@ import time as tm
 from datetime import date, timedelta
 import openpyxl
 
+
+load_dotenv()
+passkey = os.getenv('PASSKEY')
+host = os.getenv('HOST')
+special_account = os.getenv('SPECIAL_ACCOUNT')
 
 medicaments = [
     ('LEXIN 1 g (CP) - 1cp * 2/J', 'lexin'),('BIOROGYL(CP)', 'biorogyl'),('ROVAMYCINE 3M(CP)', 'rovamycine_3m'),
@@ -256,20 +263,38 @@ class PrintExportScreen(ModalScreen):
         if event.button.id in ["export", "print"]:
             pt_id, enc_id = self.get_selected_data()
             patient = conf.select_patient_by_id(pt_id)
-            if platform == 'darwin':
-                pt_dir = f'/Volumes/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}'
-            else:
-                pt_dir = f'Z:\\patients\\{pt_id} {patient.first_name} {patient.last_name}'
+            # if platform == 'darwin':
+            #     pt_dir = f'/Volumes/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}'
+            # else:
+            #     pt_dir = f'Z:\\patients\\{pt_id} {patient.first_name} {patient.last_name}'
+            selected_files = []
             for file in self.selectionlist.selected:
-                shutil.copyfile(f'{pt_dir}/{file}', f'/Users/tarek/Desktop/{file}')
-            
-            
+                # shutil.copyfile(f'{pt_dir}/{file}', f'/Users/tarek/Desktop/{file}')
+                filepath = f'/home/tarek/mediastorage/patients/{pt_id} {patient.first_name} {patient.last_name}/{file}'
+                selected_files.append(filepath)
+
+            # self.log_feedback(selected_files)
+            command = f'prusa-slicer --export-sla --merge --output {len(selected_files)}.sl1 ' + ' '.join(selected_files)
+
+            client = self.key_based_connect()
+            _stdin, stdout, _stderr = client.exec_command('ls')
+            self.log_feedback(stdout.read().decode())
+
         elif event.button.id == 'toggle-all':
             self.selectionlist.toggle_all()
 
         elif event.button.id == "exit":
             self.app.pop_screen()
 
+
+    def key_based_connect(self):
+        pkey = paramiko.RSAKey.from_private_key_file("/Users/tarek/.ssh/id_rsa", passkey)
+        client = paramiko.SSHClient()
+        policy = paramiko.AutoAddPolicy()
+        client.set_missing_host_key_policy(policy)
+        client.connect(host, username=special_account, pkey=pkey)
+        return client
+    
 
     def print_excel_file(self, file_path):
         excel = win32com.client.Dispatch("Excel.Application")
