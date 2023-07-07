@@ -13,12 +13,12 @@ import os
 import re
 from sys import platform
 import shutil
-import asyncssh
+# import asyncssh
 import paramiko
 from dotenv import load_dotenv
 from textual.worker import Worker, get_current_worker
 
-if platform == 'windows':
+if platform == 'win32':
     import win32com.client
 
 import time as tm
@@ -277,6 +277,7 @@ class PrintExportScreen(ModalScreen):
 
             command = f'prusa-slicer --export-sla --merge --output ttttttttt.sl1 ' + ' '.join(selected_files)
             self.query_one('#progress').advance(0)
+            # self.log_feedback(platform)
             self.key_based_connect(command)
             # stdin, stdout, stderr = client.exec_command(command)
             # self.log_feedback(stdout.read().decode())
@@ -301,7 +302,12 @@ class PrintExportScreen(ModalScreen):
     
     @work(exclusive=True)
     def key_based_connect(self, command):
-        pkey = paramiko.RSAKey.from_private_key_file("/Users/tarek/.ssh/id_rsa", passkey)
+        if platform == 'win32':
+            key = 'E:\\keys\\id_rsa.ppk.pub'
+        elif platform == 'darwin':
+            key = '/Users/tarek/.ssh/id_rsa'
+
+        pkey = paramiko.RSAKey.from_private_key_file(key, passkey)
         client = paramiko.SSHClient()
         policy = paramiko.AutoAddPolicy()
         client.set_missing_host_key_policy(policy)
