@@ -274,7 +274,6 @@ class PrintExportScreen(ModalScreen):
             if match:
                 for pr in match:
                     progress = round(float(pr.group()[0:-1]))
-                    # self.app.call_from_thread(self.query_one('#textlog').write ,pr.group())
                     self.app.call_from_thread(self.update_progress ,progress)
                 
     
