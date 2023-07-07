@@ -181,10 +181,12 @@ class PrintExportScreen(ModalScreen):
                         # yield RadioButton('patient', id='pt-select')
                     yield Button('toggle all', id='toggle-all')
                     yield(Static(id='feedback_popup'))
-                    yield(ProgressBar(id='progress', total=100))
-                    # yield(TextLog(id='textlog'))
                 with VerticalScroll(id='printjobs'):
                     yield self.selectionlist
+            with Horizontal(id='progress-pane'):
+                yield(ProgressBar(id='progress', total=100))
+            with Horizontal():
+                yield(TextLog(id='textlog'))
             with Horizontal(id='buttons'):
                 yield Button('export', id='export', variant='primary')
                 yield Button('print', id='print', variant='primary')
@@ -216,46 +218,10 @@ class PrintExportScreen(ModalScreen):
 
         except Exception as e:
             self.log_error(str(e))
-        # self.selectionlist.border_title = 'print jobs'
-        # self.selectionlist.add_options([('ghgh', 3), ('nnnn', 4)])
+
 
     def on_radio_set_changed(self, event: RadioSet.Changed):
         self.show_selectionlist()
-
-    def get_checked_checkboxes(self):
-        checked_checkboxes = []
-        for checkbox in self.query(Checkbox):
-            if checkbox.value:
-                checked_checkboxes.append(str(checkbox.label))
-        return checked_checkboxes
-    
-    def get_checked_radiobutton(self):
-        for radiobutton in self.query(RadioButton):
-            if radiobutton.value:   
-                return str(radiobutton.label)
-            
-    def save_document(self, patient_id, encounter_id, file, prescription=None):
-        root = os.path.dirname(os.path.abspath(__file__))
-        workbook = openpyxl.load_workbook(f'{root}/templates/{file}.xlsx')
-        worksheet = workbook['Sheet1']
-        name_cell = worksheet['K8']
-        date_cell = worksheet['O8']
-
-        today = dt.date.today()
-        formatted_date = today.strftime('%d-%m-%Y')
-        patient = conf.select_patient_by_id(patient_id)
-
-        name_cell.value = f'{patient.first_name} {patient.last_name}'
-        date_cell.value = formatted_date
-
-        if prescription:
-            pres_cell = worksheet['K13']
-            pres_cell.value = '\n'.join(prescription)
-
-        document_type = file
-        path = conf.save_prescription_file(patient_id, patient.first_name, patient.last_name, encounter_id, document_type, workbook)
-        self.log_feedback('Document generated successfully.')
-        return path
 
     def get_selected_data(self):
         calendar_screen = self.app.SCREENS.get('calendar')
@@ -275,12 +241,9 @@ class PrintExportScreen(ModalScreen):
                 filepath = f'/home/tarek/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}/{file}'
                 selected_files.append(f'"{filepath}"')
 
-            command = f'prusa-slicer --export-sla --merge --output ttttttttt.sl1 ' + ' '.join(selected_files)
-            self.query_one('#progress').advance(0)
-            # self.log_feedback(platform)
+            command = f'prusa-slicer --export-sla --merge --load config.ini --output ttttttttt.sl1 ' + ' '.join(selected_files)
+            self.query_one('#progress').update(progress=0)
             self.key_based_connect(command)
-            # stdin, stdout, stderr = client.exec_command(command)
-            # self.log_feedback(stdout.read().decode())
 
         elif event.button.id == 'toggle-all':
             self.selectionlist.toggle_all()
@@ -288,17 +251,6 @@ class PrintExportScreen(ModalScreen):
         elif event.button.id == "exit":
             self.app.pop_screen()
 
-    # # @work(exclusive=True)
-    # async def run_client(self, command):
-    #     async with asyncssh.connect(host, client_keys="/Users/tarek/.ssh/id_rsa", passphrase=passkey) as conn:
-            
-    #         try:
-    #             result = await conn.run(command, check=True)
-    #             self.log_feedback(result.stdout)
-    #             # print(result.stdout, end='')
-    #         except Exception as e:
-    #             self.log_error(e)
-    #         # print(result.stdout, end='')
     
     @work(exclusive=True)
     def key_based_connect(self, command):
@@ -316,22 +268,14 @@ class PrintExportScreen(ModalScreen):
         for line in iter(stdout.readline, ""):
             # print(line, end="")
             match = re.search(r'\d+[%]', line)
+            self.app.call_from_thread(self.query_one('#textlog').write ,line)
             if match:
-            # self.log_feedback(match)
-                self.app.call_from_thread(self.query_one('#progress').advance ,int(match.group()[0:-1]))
-        # return stdout.read().decode()
-        # return client
+                progress = int(match.group()[0:-1])
+                self.app.call_from_thread(self.update_progress ,progress)
+                
     
-
-    def print_excel_file(self, file_path):
-        excel = win32com.client.Dispatch("Excel.Application")
-        excel.Visible = False 
-        try:
-            workbook = excel.Workbooks.Open(file_path)
-            workbook.PrintOut()
-            workbook.Close(SaveChanges=0)
-        finally:
-            excel.Quit()
+    def update_progress(self, progress):
+        self.query_one('#progress').update(progress=progress)
 
 
     def log_feedback(self, msg):

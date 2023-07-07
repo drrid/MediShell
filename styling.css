@@ -81,11 +81,11 @@
 #dialog{
 
 layout: grid;
-grid-size: 1 2;
-row-span: 2;
-grid-rows: 7fr 1fr;
-width: 70;
-height: 20;
+grid-size: 1 4;
+row-span: 4;
+grid-rows: 4fr 1fr 1fr 1fr;
+width: 80;
+height: 30;
 padding: 0 1;
 border: thick $background 80%;
 background: $surface;
@@ -93,6 +93,10 @@ background: $surface;
 
 #selection {
 
+}
+
+#progress-pane {
+align: center middle;
 }
 
 #printjobs {
