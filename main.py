@@ -1,9 +1,10 @@
 from textual.app import App
 from textual.screen import Screen, ModalScreen
-from textual.widgets import Static, Footer, Header, Input, DataTable, Button, RadioButton, RadioSet, Checkbox, SelectionList, ListView, ListItem, Label
+from textual.widgets import Static, Footer, Header, Input, DataTable, Button, RadioButton, RadioSet, Checkbox, SelectionList, ListView, ListItem, Label, TextLog, ProgressBar
 from textual.coordinate import Coordinate
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll, Grid
 from textual.reactive import reactive
+from textual import work
 import conf
 import datetime as dt
 from dateutil import parser
@@ -12,8 +13,10 @@ import os
 import re
 from sys import platform
 import shutil
+import asyncssh
 import paramiko
 from dotenv import load_dotenv
+from textual.worker import Worker, get_current_worker
 
 if platform == 'windows':
     import win32com.client
@@ -178,6 +181,8 @@ class PrintExportScreen(ModalScreen):
                         # yield RadioButton('patient', id='pt-select')
                     yield Button('toggle all', id='toggle-all')
                     yield(Static(id='feedback_popup'))
+                    yield(ProgressBar(id='progress', total=100))
+                    # yield(TextLog(id='textlog'))
                 with VerticalScroll(id='printjobs'):
                     yield self.selectionlist
             with Horizontal(id='buttons'):
@@ -259,26 +264,22 @@ class PrintExportScreen(ModalScreen):
         encounter = conf.select_encounter_by_rdv(encounter_time)
         return encounter.patient_id, encounter.encounter_id
 
+    
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id in ["export", "print"]:
             pt_id, enc_id = self.get_selected_data()
             patient = conf.select_patient_by_id(pt_id)
-            # if platform == 'darwin':
-            #     pt_dir = f'/Volumes/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}'
-            # else:
-            #     pt_dir = f'Z:\\patients\\{pt_id} {patient.first_name} {patient.last_name}'
+
             selected_files = []
             for file in self.selectionlist.selected:
-                # shutil.copyfile(f'{pt_dir}/{file}', f'/Users/tarek/Desktop/{file}')
-                filepath = f'/home/tarek/mediastorage/patients/{pt_id} {patient.first_name} {patient.last_name}/{file}'
-                selected_files.append(filepath)
+                filepath = f'/home/tarek/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}/{file}'
+                selected_files.append(f'"{filepath}"')
 
-            # self.log_feedback(selected_files)
-            command = f'prusa-slicer --export-sla --merge --output {len(selected_files)}.sl1 ' + ' '.join(selected_files)
-
-            client = self.key_based_connect()
-            _stdin, stdout, _stderr = client.exec_command('ls')
-            self.log_feedback(stdout.read().decode())
+            command = f'prusa-slicer --export-sla --merge --output ttttttttt.sl1 ' + ' '.join(selected_files)
+            self.query_one('#progress').advance(0)
+            self.key_based_connect(command)
+            # stdin, stdout, stderr = client.exec_command(command)
+            # self.log_feedback(stdout.read().decode())
 
         elif event.button.id == 'toggle-all':
             self.selectionlist.toggle_all()
@@ -286,14 +287,34 @@ class PrintExportScreen(ModalScreen):
         elif event.button.id == "exit":
             self.app.pop_screen()
 
-
-    def key_based_connect(self):
+    # # @work(exclusive=True)
+    # async def run_client(self, command):
+    #     async with asyncssh.connect(host, client_keys="/Users/tarek/.ssh/id_rsa", passphrase=passkey) as conn:
+            
+    #         try:
+    #             result = await conn.run(command, check=True)
+    #             self.log_feedback(result.stdout)
+    #             # print(result.stdout, end='')
+    #         except Exception as e:
+    #             self.log_error(e)
+    #         # print(result.stdout, end='')
+    
+    @work(exclusive=True)
+    def key_based_connect(self, command):
         pkey = paramiko.RSAKey.from_private_key_file("/Users/tarek/.ssh/id_rsa", passkey)
         client = paramiko.SSHClient()
         policy = paramiko.AutoAddPolicy()
         client.set_missing_host_key_policy(policy)
         client.connect(host, username=special_account, pkey=pkey)
-        return client
+        stdin, stdout, stderr = client.exec_command(command, get_pty=True)
+        for line in iter(stdout.readline, ""):
+            # print(line, end="")
+            match = re.search(r'\d+[%]', line)
+            if match:
+            # self.log_feedback(match)
+                self.app.call_from_thread(self.query_one('#progress').advance ,int(match.group()[0:-1]))
+        # return stdout.read().decode()
+        # return client
     
 
     def print_excel_file(self, file_path):
