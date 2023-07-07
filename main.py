@@ -241,9 +241,11 @@ class PrintExportScreen(ModalScreen):
                 filepath = f'/home/tarek/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}/{file}'
                 selected_files.append(f'"{filepath}"')
 
-            command = f'prusa-slicer --export-sla --merge --load config.ini --output ttttttttt.sl1 ' + ' '.join(selected_files)
+            command = f'prusa-slicer --export-sla --merge --load config.ini --output ttttttttt.sl1 ' + ' '.join(selected_files) + ' && ' + '/home/tarek/uvtools/UVtoolsCmd convert ttttttttt.sl1 pm3'
             self.query_one('#progress').update(progress=0)
             self.key_based_connect(command)
+            # self.key_based_connect('/home/tarek/uvtools/UVtoolsCmd convert ttttttttt.sl1 pm3')
+            
 
         elif event.button.id == 'toggle-all':
             self.selectionlist.toggle_all()
@@ -266,12 +268,14 @@ class PrintExportScreen(ModalScreen):
         client.connect(host, username=special_account, pkey=pkey)
         stdin, stdout, stderr = client.exec_command(command, get_pty=True)
         for line in iter(stdout.readline, ""):
-            # print(line, end="")
-            match = re.search(r'\d+[%]', line)
+            # match = re.findall(r'\d+\.\d+?%', line)
+            match = re.finditer(r'\d+(\.\d+)?%', line)
             self.app.call_from_thread(self.query_one('#textlog').write ,line)
             if match:
-                progress = int(match.group()[0:-1])
-                self.app.call_from_thread(self.update_progress ,progress)
+                for pr in match:
+                    progress = round(float(pr.group()[0:-1]))
+                    # self.app.call_from_thread(self.query_one('#textlog').write ,pr.group())
+                    self.app.call_from_thread(self.update_progress ,progress)
                 
     
     def update_progress(self, progress):
