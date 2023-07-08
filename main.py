@@ -244,7 +244,6 @@ class PrintExportScreen(ModalScreen):
             command = f'prusa-slicer --export-sla --merge --load config.ini --output ttttttttt.sl1 ' + ' '.join(selected_files) + ' && ' + '/home/tarek/uvtools/UVtoolsCmd convert ttttttttt.sl1 pm3'
             self.query_one('#progress').update(progress=0)
             self.key_based_connect(command)
-            # self.key_based_connect('/home/tarek/uvtools/UVtoolsCmd convert ttttttttt.sl1 pm3')
             
 
         elif event.button.id == 'toggle-all':
