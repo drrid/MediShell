@@ -204,10 +204,12 @@ class PrintExportScreen(ModalScreen):
         try:
             pt_id, enc_id = self.get_selected_data()
             patient = conf.select_patient_by_id(pt_id)
+
             if platform == 'darwin':
                 pt_dir = f'/Volumes/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}'
             else:
                 pt_dir = f'Z:\\patients\\{pt_id} {patient.first_name} {patient.last_name}'
+            aligner_files = []
             for file in os.listdir(pt_dir):
                 if file.endswith(f'{selected_radio}.stl'):
                     match = re.search(r'\b\d+\b', file)
@@ -215,9 +217,12 @@ class PrintExportScreen(ModalScreen):
                         number = match.group()
                         self.selectionlist.add_option((f'step {number}', file))
                         self.selectionlist.select_all()
-
+                        aligner_files.append(file)
+        
+            return aligner_files
         except Exception as e:
             self.log_error(str(e))
+
 
 
     def on_radio_set_changed(self, event: RadioSet.Changed):
@@ -235,6 +240,7 @@ class PrintExportScreen(ModalScreen):
         if event.button.id in ["export", "print"]:
             pt_id, enc_id = self.get_selected_data()
             patient = conf.select_patient_by_id(pt_id)
+            nb_aligners = self.show_selectionlist()
 
             selected_files = []
             for file in self.selectionlist.selected:
@@ -243,6 +249,8 @@ class PrintExportScreen(ModalScreen):
 
             command = f'prusa-slicer --export-sla --merge --load config.ini --output ttttttttt.sl1 ' + ' '.join(selected_files) + ' && ' + '/home/tarek/uvtools/UVtoolsCmd convert ttttttttt.sl1 pm3'
             self.query_one('#progress').update(progress=0)
+            # self.log_feedback(self.selectionlist)
+            self.print_pt(pt_id, patient.first_name, patient.last_name, len(nb_aligners))
             self.key_based_connect(command)
             
 
@@ -252,7 +260,16 @@ class PrintExportScreen(ModalScreen):
         elif event.button.id == "exit":
             self.app.pop_screen()
 
-    
+    def print_pt(self, id, fname, lname, nb_models):
+        with open(f'C://Users//tarek//OneDrive//Documents//bt//{id}.txt', 'w') as pt_file:
+            pt_file.write('ptID,ptFName,ptLName,UL,nbModels' + '\n')
+            pt_file.write(f'{id},{fname},{lname},Lower,{nb_models}')
+
+        with open(f'C://Users//tarek//OneDrive//Documents//bt//{id}2.txt', 'w') as pt_file:
+            pt_file.write('ptID,ptFName,ptLName,UL,nbModels' + '\n')
+            pt_file.write(f'{id},{fname},{lname},Upper,{nb_models}')
+
+
     @work(exclusive=True)
     def key_based_connect(self, command):
         if platform == 'win32':
@@ -274,6 +291,8 @@ class PrintExportScreen(ModalScreen):
                 for pr in match:
                     progress = round(float(pr.group()[0:-1]))
                     self.app.call_from_thread(self.update_progress ,progress)
+
+        
                 
     
     def update_progress(self, progress):
@@ -542,18 +561,6 @@ class Calendar(Screen):
             self.log_error(e)
 
 
-    # def show_encounters(self, pt_id, encounter_id='All'):
-    #     self.encounter_widget.clear()
-    #     if encounter_id == 'All':
-    #         encounters = iter(conf.select_all_pt_encounters(pt_id))
-    #         for row in encounters:
-    #             self.encounter_widget.add_row(*row, height=int(len(row[2])/20+1))
-    #     else:
-    #         encounter = iter(conf.select_pt_encounter(encounter_id))
-    #         for row in encounter:
-    #             self.encounter_widget.add_row(*row, height=int(len(row[2])/20+1))
-
-
     def show_calendar(self, week_index):
         current_row = self.calendar_widget.cursor_row
         current_column = self.calendar_widget.cursor_column
@@ -618,8 +625,11 @@ class Calendar(Screen):
 
 
     def on_data_table_row_selected(self, message: DataTable.RowSelected):
-        self.calendar_widget.move_cursor(row=0, column=0)
-        self.show_encounters()
+        cursor = self.calendar_widget.cursor_coordinate
+        cursor_value = self.calendar_widget.get_cell_at(cursor)
+        if '_' not in cursor_value:
+            self.calendar_widget.move_cursor(row=0, column=0)
+            self.show_encounters()
             
 
     
