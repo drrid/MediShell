@@ -256,7 +256,7 @@ class PrintExportScreen(ModalScreen):
     @work(exclusive=True)
     def key_based_connect(self, command):
         if platform == 'win32':
-            key = 'E:\\keys\\id_rsa.ppk.pub'
+            key = 'C://Users//tarek//.ssh//win2'
         elif platform == 'darwin':
             key = '/Users/tarek/.ssh/id_rsa'
 
