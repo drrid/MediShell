@@ -17,6 +17,7 @@ import shutil
 import paramiko
 from dotenv import load_dotenv
 from textual.worker import Worker, get_current_worker
+import nextcloud_client
 
 if platform == 'win32':
     import win32com.client
@@ -30,6 +31,9 @@ import openpyxl
 load_dotenv()
 passkey = os.getenv('PASSKEY')
 host = os.getenv('HOST')
+nc_client = os.getenv('NC_CLIENT')
+nc_user = os.getenv('NC_USER')
+nc_pass = os.getenv('NC_PASS')
 special_account = os.getenv('SPECIAL_ACCOUNT')
 
 medicaments = [
@@ -250,17 +254,17 @@ class PrintExportScreen(ModalScreen):
             command = f'prusa-slicer --export-sla --merge --load config.ini --output ttttttttt.sl1 ' + ' '.join(selected_files) + ' && ' + '/home/tarek/uvtools/UVtoolsCmd convert ttttttttt.sl1 pm3'
             self.query_one('#progress').update(progress=0)
             # self.log_feedback(self.selectionlist)
-            self.print_pt(pt_id, patient.first_name, patient.last_name, len(nb_aligners))
+            link = self.get_nc_link(f'/home/tarek/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}/video.mp4')
+            self.print_pt(pt_id, patient.first_name, patient.last_name, len(nb_aligners), link)
             self.key_based_connect(command)
             
-
         elif event.button.id == 'toggle-all':
             self.selectionlist.toggle_all()
 
         elif event.button.id == "exit":
             self.app.pop_screen()
 
-    def print_pt(self, id, fname, lname, nb_models):
+    def print_pt(self, id, fname, lname, nb_models, link):
         with open(f'C://Users//tarek//OneDrive//Documents//bt//{id}.txt', 'w') as pt_file:
             pt_file.write('ptID,ptFName,ptLName,UL,nbModels' + '\n')
             pt_file.write(f'{id},{fname},{lname},Lower,{nb_models}')
@@ -268,6 +272,20 @@ class PrintExportScreen(ModalScreen):
         with open(f'C://Users//tarek//OneDrive//Documents//bt//{id}2.txt', 'w') as pt_file:
             pt_file.write('ptID,ptFName,ptLName,UL,nbModels' + '\n')
             pt_file.write(f'{id},{fname},{lname},Upper,{nb_models}')
+
+        with open(f'C://Users//tarek//OneDrive//Documents//bt2//{id}.txt', 'w') as pt_file:
+            pt_file.write('ptID,ptFName,ptLName,nbModels,link' + '\n')
+            pt_file.write(f'{id},{fname},{lname},{nb_models},{link}')
+
+    
+    def get_nc_link(self, video):
+        nc = nextcloud_client.Client(nc_client)
+        nc.login(nc_user, nc_pass)
+        nc.mkdir('patients-animations')
+        video_name = video.split('/')[-1]
+        nc.put_file(f'patients-animations/{video_name}', video)
+        link_info = nc.share_file_with_link(f'patients-animations/{video_name}')
+        return link_info
 
 
     @work(exclusive=True)
