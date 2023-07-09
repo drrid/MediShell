@@ -254,7 +254,13 @@ class PrintExportScreen(ModalScreen):
             command = f'prusa-slicer --export-sla --merge --load config.ini --output ttttttttt.sl1 ' + ' '.join(selected_files) + ' && ' + '/home/tarek/uvtools/UVtoolsCmd convert ttttttttt.sl1 pm3'
             self.query_one('#progress').update(progress=0)
             # self.log_feedback(self.selectionlist)
-            link = self.get_nc_link(f'/home/tarek/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}/video.mp4')
+            if platform == 'darwin':
+                pt_dir = f'/Volumes/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}/'
+            else:
+                pt_dir = f'Z:\\patients\\{pt_id} {patient.first_name} {patient.last_name}\\'
+
+
+            link = self.get_nc_link(f'{pt_dir}video.mp4').get_link()
             self.print_pt(pt_id, patient.first_name, patient.last_name, len(nb_aligners), link)
             self.key_based_connect(command)
             
@@ -274,17 +280,17 @@ class PrintExportScreen(ModalScreen):
             pt_file.write(f'{id},{fname},{lname},Upper,{nb_models}')
 
         with open(f'C://Users//tarek//OneDrive//Documents//bt2//{id}.txt', 'w') as pt_file:
-            pt_file.write('ptID,ptFName,ptLName,nbModels,link' + '\n')
-            pt_file.write(f'{id},{fname},{lname},{nb_models},{link}')
+            pt_file.write('ptFName,ptLName,link' + '\n')
+            pt_file.write(f'{fname},{lname},{link}')
 
     
     def get_nc_link(self, video):
         nc = nextcloud_client.Client(nc_client)
         nc.login(nc_user, nc_pass)
-        nc.mkdir('patients-animations')
-        video_name = video.split('/')[-1]
-        nc.put_file(f'patients-animations/{video_name}', video)
-        link_info = nc.share_file_with_link(f'patients-animations/{video_name}')
+        # nc.mkdir('patients-animations6')
+        # video_name = video.split('.')[-1]
+        nc.put_file(f'patients-animations6/video2.mp4', video)
+        link_info = nc.share_file_with_link(f'patients-animations6/video2.mp4')
         return link_info
 
 
