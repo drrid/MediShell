@@ -1,11 +1,10 @@
 from textual.app import App
 from textual.screen import Screen, ModalScreen
-from textual.widgets import Static, Footer, Header, Input, DataTable, Button, RadioButton, RadioSet, Checkbox, SelectionList, ListView, ListItem, Label, TextLog, ProgressBar
+from textual.widgets import Static, Footer, Header, Input, DataTable, Button, RadioButton, RadioSet, Checkbox, SelectionList, TextLog, ProgressBar
 from textual.coordinate import Coordinate
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll, Grid
 from textual.reactive import reactive
 from textual import work
-from rich import color
 import conf
 import datetime as dt
 from dateutil import parser
@@ -13,16 +12,13 @@ import asyncio
 import os
 import re
 from sys import platform
-import shutil
-# import asyncssh
+if platform == 'win32':
+    import win32com.client
+    
 import paramiko
 from dotenv import load_dotenv
 from textual.worker import Worker, get_current_worker
 import nextcloud_client
-
-if platform == 'win32':
-    import win32com.client
-
 import time as tm
 
 from datetime import date, timedelta
@@ -378,7 +374,7 @@ class Calendar(Screen):
     
     async def update_calendar_periodically(self) -> None:
         while True:
-            await asyncio.sleep(30)  # Update every 60 seconds (1 minute)
+            await asyncio.sleep(5)  # Update every 5 seconds
             self.show_calendar(self.week_index)
 
     def refresh_tables(self):
@@ -521,6 +517,9 @@ class Calendar(Screen):
             self.encounter_widget.clear()
             # self.show_encounters(patient_id)
             self.log_feedback('Encounter added successfully')
+            self.show_calendar(self.week_index)
+            self.show_encounters()
+            self.selected_calendar()
         except Exception as e:
             self.log_error(f"Error adding encounter: {e}")
 
@@ -540,6 +539,7 @@ class Calendar(Screen):
         cursor = self.patient_widget.cursor_coordinate
         # patient_id = self.patient_widget.get_cell_at(Coordinate(cursor.row, 0))
         inputs = ['fname', 'lname', 'dob', 'phone']
+        self.query_one('#fname').focus()
 
         if self.modify_pt == False:
 
@@ -674,8 +674,8 @@ class Calendar(Screen):
         cursor = self.calendar_widget.cursor_coordinate
         cursor_value = self.calendar_widget.get_cell_at(cursor)
         if '_' in cursor_value or ':' in cursor_value:
-            # self.show_patients()
-            # self.encounter_widget.clear()
+        #     # self.show_patients()
+        #     # self.encounter_widget.clear()
             return
         
         try:
@@ -691,7 +691,9 @@ class Calendar(Screen):
             self.show_encounters()
 
             # start = tm.time()
-            self.encounter_widget.move_cursor(row=row_index_enc, column=2)
+            cursor_enc = self.encounter_widget.cursor_coordinate
+            self.encounter_widget.cursor_type = 'row'
+            self.encounter_widget.move_cursor(row=row_index_enc, column=cursor_enc.column)
             end = tm.time()
 
             # self.log_feedback(end-start)
@@ -701,11 +703,18 @@ class Calendar(Screen):
 
 
     def on_data_table_row_selected(self, message: DataTable.RowSelected):
-        cursor = self.calendar_widget.cursor_coordinate
-        cursor_value = self.calendar_widget.get_cell_at(cursor)
-        if '_' not in cursor_value:
-            self.calendar_widget.move_cursor(row=0, column=0)
+        if message._sender.id == 'pt_table':
+            if self.modify_pt == True:
+                self.action_modify_patient()
+            self.encounter_widget.cursor_type = 'row'
+            cursor = self.calendar_widget.cursor_coordinate
+            cursor_value = self.calendar_widget.get_cell_at(cursor)
+            if '_' not in cursor_value:
+                self.calendar_widget.move_cursor(row=0, column=0)
             self.show_encounters()
+        elif message._sender.id == 'enc_table':
+            self.encounter_widget.cursor_type = 'cell'
+            self.calendar_widget.move_cursor(row=0, column=0)
             
 
     
