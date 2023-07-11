@@ -110,6 +110,7 @@ def update_patient(patient_id, **kwargs):
             print(e)
             session.rollback()
 
+
 def save_to_db(record):
     """Save the given record to the database."""
     with Session() as session:

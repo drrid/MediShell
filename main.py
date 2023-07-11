@@ -5,6 +5,7 @@ from textual.coordinate import Coordinate
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll, Grid
 from textual.reactive import reactive
 from textual import work
+from rich import color
 import conf
 import datetime as dt
 from dateutil import parser
@@ -336,12 +337,14 @@ class Calendar(Screen):
     BINDINGS = [("ctrl+left", "previous_week", "Previous Week"),
             ("ctrl+right", "next_week", "Next Week"),
             ("f1", "add_encounter", "Add Encounter"),
+            ("f2", "modify_patient", "Modify Patient"),
             ("ctrl+delete", "delete_encounter", "Delete Encounter"),
             ("f5", "clear_inputs", "Clear"),
             ("f10", "request_export", "Export")]
     week_index = reactive(0)
     row_index_id = {}
     row_index_enc_id = {}
+    modify_pt = False
 
     def compose(self):
         self.table = DataTable()
@@ -352,7 +355,7 @@ class Calendar(Screen):
 
         self.inputs_container = Vertical(Horizontal(
                                     Input('', placeholder='First Name', id='fname'),Input('', placeholder='Last Name', id='lname'),
-                                    Input('', placeholder='Phone', id='phone'),Input('', placeholder='Date Of Birth', id='dob'),
+                                    Input('', placeholder='Date Of Birth', id='dob'), Input('', placeholder='Phone', id='phone'),
                                     Button('Add', id='addpatient'),Button('Update', id='updatepatient'), id='inputs'),
                                 id='upper_cnt')
         self.tables_container = Vertical(
@@ -375,7 +378,7 @@ class Calendar(Screen):
     
     async def update_calendar_periodically(self) -> None:
         while True:
-            await asyncio.sleep(5)  # Update every 60 seconds (1 minute)
+            await asyncio.sleep(30)  # Update every 60 seconds (1 minute)
             self.show_calendar(self.week_index)
 
     def refresh_tables(self):
@@ -444,35 +447,40 @@ class Calendar(Screen):
             input.value = ''
 
     def on_button_pressed(self, event: Button.Pressed):
+        
+        cursor = self.patient_widget.cursor_coordinate
+        patient_id = self.patient_widget.get_cell_at(Coordinate(cursor.row, 0))
+        first_name = self.query_one('#fname').value.capitalize()
+        last_name = self.query_one('#lname').value.capitalize()
+        phone = self.query_one('#phone').value
+        date_of_birth = self.query_one('#dob').value
+
+        # Validate the input values
+        if not first_name or not last_name or not phone or not date_of_birth:
+            self.log_error("Please fill in all fields.")
+            return
+
+        try:
+            parsed_dob = parser.parse(date_of_birth).date()
+        except ValueError:
+            self.log_error("Invalid date format.")
+            return
+        try:
+            parsed_phone = int(phone)
+        except ValueError:
+            self.log_error("Invalid phone number.")
+            return
+
+        # Check for patient duplication
+        existing_patient = conf.select_patient_by_details(first_name, last_name, parsed_phone, parsed_dob)
+        if existing_patient:
+            self.log_error("Patient with the same details already exists.")
+            return
+        
         if event.control.id == 'addpatient':
-            first_name = self.query_one('#fname').value.capitalize()
-            last_name = self.query_one('#lname').value.capitalize()
-            phone = self.query_one('#phone').value
-            date_of_birth = self.query_one('#dob').value
-
-            # Validate the input values
-            if not first_name or not last_name or not phone or not date_of_birth:
-                self.log_error("Please fill in all fields.")
-                return
-
-            try:
-                parsed_dob = parser.parse(date_of_birth).date()
-            except ValueError:
-                self.log_error("Invalid date format.")
-                return
-            try:
-                parsed_phone = int(phone)
-            except ValueError:
-                self.log_error("Invalid phone number.")
-                return
-
-            # Check for patient duplication
-            existing_patient = conf.select_patient_by_details(first_name, last_name, parsed_phone, parsed_dob)
-            if existing_patient:
-                self.log_error("Patient with the same details already exists.")
-                return
-
             self.add_patient(first_name, last_name, parsed_phone, parsed_dob)
+        if event.control.id == 'updatepatient':
+            self.update_patient(patient_id, first_name, last_name, parsed_phone, parsed_dob)
 
 
     def action_delete_encounter(self):
@@ -528,6 +536,29 @@ class Calendar(Screen):
         return dt.datetime.combine(day, time_slot_start)
 
 
+    def action_modify_patient(self):
+        cursor = self.patient_widget.cursor_coordinate
+        # patient_id = self.patient_widget.get_cell_at(Coordinate(cursor.row, 0))
+        inputs = ['fname', 'lname', 'dob', 'phone']
+
+        if self.modify_pt == False:
+
+            for i, inp in enumerate(inputs):
+                self.query_one(f'#{inp}').value = self.patient_widget.get_cell_at(Coordinate(cursor.row, i+1))
+                self.query_one(f'#{inp}').styles.background = 'teal'
+                if i==4:
+                    self.query_one(f'#{inp}').value = int(self.patient_widget.get_cell_at(Coordinate(cursor.row, i+1)))
+            self.modify_pt = True
+            pass
+
+        else :
+            for i, inp in enumerate(inputs):
+                self.query_one(f'#{inp}').value = ''
+                self.query_one(f'#{inp}').styles.background = self.styles.background
+            self.modify_pt = False
+            pass
+
+
     def add_patient(self, first_name, last_name, phone, date_of_birth):
         try:
             patient = conf.Patient(first_name=first_name, last_name=last_name, phone=phone, date_of_birth=date_of_birth)
@@ -541,6 +572,27 @@ class Calendar(Screen):
             self.log_feedback(foldername)
             if not isExist:
                 os.makedirs(foldername)
+
+        except Exception as e:
+            self.log_error(f"Error adding patient: {e}")
+
+
+    def update_patient(self, patient_id, first_name, last_name, phone, date_of_birth):
+        try:
+            self.action_modify_patient()
+            old_patient = conf.select_patient_by_id(patient_id)
+            conf.update_patient(patient_id=patient_id, first_name=first_name, last_name=last_name, phone=phone, date_of_birth=date_of_birth)
+            self.log_feedback("Patient updated successfully.")
+            self.show_patients()
+            row_index = self.row_index_id.get(str(patient_id))
+            self.patient_widget.move_cursor(row=row_index)
+
+            old_foldername = f"Z:\\patients\\{patient_id} {old_patient.first_name} {old_patient.last_name}"
+            new_foldername = f"Z:\\patients\\{patient_id} {first_name} {last_name}"
+            isExist = os.path.exists(f'Z:\\patients\\{new_foldername}')
+            if not isExist:
+                os.rename(old_foldername, new_foldername)
+
 
         except Exception as e:
             self.log_error(f"Error adding patient: {e}")
@@ -663,6 +715,7 @@ class PMSApp(App):
     BINDINGS = [("ctrl+left", "previous_week", "Previous Week"),
             ("ctrl+right", "next_week", "Next Week"),
             ("f1", "add_encounter", "Add Encounter"),
+            ("f2", "modify_patient", "Modify Patient"),
             ("ctrl+delete", "delete_encounter", "Delete Encounter"),
             ("f5", "clear_inputs", "Clear"),
             ("f10", "request_export", "Export")]
