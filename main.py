@@ -14,7 +14,7 @@ import re
 from sys import platform
 if platform == 'win32':
     import win32com.client
-    
+
 import paramiko
 from dotenv import load_dotenv
 from textual.worker import Worker, get_current_worker
@@ -485,7 +485,6 @@ class Calendar(Screen):
         if '_' in patient_name:
             self.log_error('No encounter to delete!')
             return
-        
         try:
             encounter_time = self.get_datetime_from_cell(self.week_index, cursor.row, cursor.column)
             encounter_id = conf.select_encounter_by_rdv(encounter_time).encounter_id
@@ -496,6 +495,7 @@ class Calendar(Screen):
         except Exception as e:
             self.log_error(e)
             return
+
 
     def action_add_encounter(self):
         try:
