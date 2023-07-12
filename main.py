@@ -163,6 +163,7 @@ class ExportScreen(ModalScreen):
 
     def log_feedback(self, msg):
         self.query_one('#feedback_popup').update(f'[bold #11696b]{str(msg)}')
+        # self.query_one('#feedback_popup').update(f'[bold #11696b]{str(msg)}')
 
     def log_error(self, msg):
         self.query_one('#feedback_popup').update(f'[bold red]{str(msg)}')
@@ -225,9 +226,9 @@ class PrintExportScreen(ModalScreen):
             self.log_error(str(e))
 
 
-
     def on_radio_set_changed(self, event: RadioSet.Changed):
         self.show_selectionlist()
+
 
     def get_selected_data(self):
         calendar_screen = self.app.SCREENS.get('calendar')
@@ -312,9 +313,7 @@ class PrintExportScreen(ModalScreen):
                 for pr in match:
                     progress = round(float(pr.group()[0:-1]))
                     self.app.call_from_thread(self.update_progress ,progress)
-
-        
-                
+          
     
     def update_progress(self, progress):
         self.query_one('#progress').update(progress=progress)
@@ -359,7 +358,7 @@ class Calendar(Screen):
                                 Vertical(self.patient_widget,
                                         self.encounter_widget,
                                         Input(placeholder='Notes...', id='notes'), 
-                                        Static(id='feedback'),
+                                        TextLog(id='feedback', highlight=True, markup=True),
                                         id='tables'),
                                         self.calendar_widget,
                                 id='tables_cnt'),
@@ -374,11 +373,8 @@ class Calendar(Screen):
     
     async def update_calendar_periodically(self) -> None:
         while True:
-            await asyncio.sleep(5)  # Update every 5 seconds
+            await asyncio.sleep(10)  # Update every 5 seconds
             self.show_calendar(self.week_index)
-
-    def refresh_tables(self):
-        self.show_calendar(self.week_index)
 
     def on_mount(self):
         asyncio.create_task(self.update_calendar_periodically())
@@ -395,6 +391,14 @@ class Calendar(Screen):
         self.show_calendar(self.week_index)
         self.show_patients()
         self.show_encounters()
+        # self.update_tooltip()
+
+
+    # def update_tooltip(self):
+    #     cursor = self.calendar_widget.hover_row
+    #     enc_time = self.calendar_widget.get_cell_at(Coordinate(cursor,0))
+    #     self.calendar_widget.tooltip = enc_time
+    #     # self.log_feedback(cursor)
 
     def on_input_submitted(self, event: Input.Submitted):
         try:
@@ -427,12 +431,12 @@ class Calendar(Screen):
                     self.query_one('#phone').value = ''
 
                 patients = conf.select_all_starts_with(first_name=fname, last_name=lname, phone=phone)
-                if patients is not None:
-                    # self.log_feedback(patients)
+                if len(patients) != 0:
                     patient_id = patients[0][0]
                     row_index = self.row_index_id.get(patient_id)
                     self.patient_widget.move_cursor(row=row_index)
                     self.show_encounters()
+
 
             except Exception as e:
                 self.log_error(e)
@@ -510,7 +514,6 @@ class Calendar(Screen):
             patient_last_name = self.patient_widget.get_cell_at(Coordinate(self.patient_widget.cursor_coordinate.row, 2))
 
             selected_datetime = self.get_datetime_from_cell(self.week_index, cursor.row, cursor.column)
-            self.log_feedback(selected_datetime)
             conf.save_to_db(conf.Encounter(patient_id=patient_id, rdv=selected_datetime))
 
             self.calendar_widget.update_cell_at(cursor, f'{patient_first_name} {patient_last_name}')
@@ -565,11 +568,12 @@ class Calendar(Screen):
             patient_id = conf.save_to_db(patient)
             self.log_feedback("Patient added successfully.")
             self.show_patients()
+            self.calendar_widget.move_cursor(row=0, column=0)
             row_index = self.row_index_id.get(str(patient_id))
             self.patient_widget.move_cursor(row=row_index)
             foldername = f"Z:\\patients\\{patient_id} {patient.first_name} {patient.last_name}"
             isExist = os.path.exists(f'Z:\\patients\\{foldername}')
-            self.log_feedback(foldername)
+            self.show_encounters()
             if not isExist:
                 os.makedirs(foldername)
 
@@ -599,7 +603,8 @@ class Calendar(Screen):
 
 
     def log_error(self, msg):
-        self.query_one('#feedback').update(f'[bold red]{str(msg)}')
+        timestamp = dt.datetime.now()
+        self.query_one('#feedback').write(f'{timestamp}---[bold red]{str(msg)}')
 
     def action_next_week(self):
         self.week_index += 1 
@@ -610,7 +615,8 @@ class Calendar(Screen):
         self.show_calendar(self.week_index)
 
     def log_feedback(self, msg):
-        self.query_one('#feedback').update(f'[bold #11696b]{str(msg)}')
+        timestamp = dt.datetime.now()
+        self.query_one('#feedback').write(f'{timestamp}---[bold #11696b]{str(msg)}')
 
 
     def show_patients(self):
@@ -668,6 +674,13 @@ class Calendar(Screen):
             self.query_one('#notes').value = ''
         if message.control.id == 'cal_table':
             self.selected_calendar()
+            self.selected_calendar()
+            # self.update_tooltip()
+
+
+    # def on_data_table_cell_highlighted(self, message: DataTable.CellHighlighted):
+    #     if message.control.id == 'cal_table':
+    #         self.update_tooltip()
 
         
     def selected_calendar(self):
@@ -703,7 +716,7 @@ class Calendar(Screen):
 
 
     def on_data_table_row_selected(self, message: DataTable.RowSelected):
-        if message._sender.id == 'pt_table':
+        if message.control.id == 'pt_table':
             if self.modify_pt == True:
                 self.action_modify_patient()
             self.encounter_widget.cursor_type = 'row'
@@ -712,7 +725,7 @@ class Calendar(Screen):
             if '_' not in cursor_value:
                 self.calendar_widget.move_cursor(row=0, column=0)
             self.show_encounters()
-        elif message._sender.id == 'enc_table':
+        elif message.control.id == 'enc_table':
             self.encounter_widget.cursor_type = 'cell'
             self.calendar_widget.move_cursor(row=0, column=0)
             
