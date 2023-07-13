@@ -10,6 +10,7 @@ import datetime as dt
 from dateutil import parser
 import asyncio
 import os
+from natsort import natsorted 
 import re
 from sys import platform
 if platform == 'win32':
@@ -172,14 +173,18 @@ class ExportScreen(ModalScreen):
 # Printing Export Screen --------------------------------------------------------------------------------------------------------------------------------------------------
 class PrintExportScreen(ModalScreen):
 
+    nb_aligners = []
+    worker = []
+    
     def compose(self):
         self.selectionlist = SelectionList[int]()
         with Grid(id='dialog'):
             with Horizontal(id='selection'):
                 with Vertical(id='right_cnt'):
                     with RadioSet(id='exports'):
-                        yield RadioButton('Upper', id='Upper', value=True)
-                        yield RadioButton('Lower ', id='Lower')
+                        yield RadioButton('3D models', id='models', value=True)
+                        yield RadioButton('Prescription', id='prescription')
+                        # yield RadioButton('custom', id='custom')
                         # yield RadioButton('patient', id='pt-select')
                     yield Button('toggle all', id='toggle-all')
                     yield(Static(id='feedback_popup'))
@@ -188,7 +193,7 @@ class PrintExportScreen(ModalScreen):
             with Horizontal(id='progress-pane'):
                 yield(ProgressBar(id='progress', total=100))
             with Horizontal():
-                yield(TextLog(id='textlog'))
+                yield(TextLog(id='textlog', highlight=True, markup=True))
             with Horizontal(id='buttons'):
                 yield Button('export', id='export', variant='primary')
                 yield Button('print', id='print', variant='primary')
@@ -198,75 +203,170 @@ class PrintExportScreen(ModalScreen):
     def on_mount(self):
         self.show_selectionlist()
 
-    
     def show_selectionlist(self):
-        self.selectionlist.clear_options()
-        selected_radio = self.query_one('#exports').pressed_button.id
-        # self.log_feedback(platform)
-        try:
-            pt_id, enc_id = self.get_selected_data()
-            patient = conf.select_patient_by_id(pt_id)
+            self.selectionlist.clear_options()
+            selected_radio = self.query_one('#exports').pressed_button.id
+            if selected_radio == 'models':
+                try:
+                    calendar_screen: Calendar = self.app.SCREENS.get('calendar')
+                    patient = calendar_screen.patient_widget.get_row_at(calendar_screen.patient_widget.cursor_coordinate.row)
 
-            if platform == 'darwin':
-                pt_dir = f'/Volumes/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}'
-            else:
-                pt_dir = f'Z:\\patients\\{pt_id} {patient.first_name} {patient.last_name}'
-            aligner_files = []
-            for file in os.listdir(pt_dir):
-                if file.endswith(f'{selected_radio}.stl'):
-                    match = re.search(r'\b\d+\b', file)
-                    if match:
-                        number = match.group()
-                        self.selectionlist.add_option((f'step {number}', file))
-                        self.selectionlist.select_all()
-                        aligner_files.append(file)
-        
-            return aligner_files
-        except Exception as e:
-            self.log_error(str(e))
+                    if platform == 'darwin':
+                        pt_dir = f'/Volumes/mediaserver/patients/{patient[0]} {patient[1]} {patient[2]}'
+                    else:
+                        pt_dir = f'Z:\\patients\\{patient[0]} {patient[1]} {patient[2]}'
+
+                    aligner_files = []
+
+                    for file in natsorted(os.listdir(pt_dir)):
+                        if file.endswith(f'.stl'):
+                            aligner_files.append(file)
+                            self.selectionlist.add_option((file.split('_')[-1], file))
+                    self.nb_aligners = aligner_files
+                except Exception as e:
+                    self.log_error(str(e))
+
+            elif selected_radio == 'prescription':
+                try:
+                    self.selectionlist.add_option(('Pano', 'pano'))
+                    self.selectionlist.add_option(('Pano + Teleradiographie', 'pano_tlr'))
+                    self.selectionlist.add_option(('Certificat', 'certificat'))
+                    self.selectionlist.add_option(('Empty', 'empty'))
+                except Exception as e:
+                    self.log_error(str(e))
 
 
     def on_radio_set_changed(self, event: RadioSet.Changed):
         self.show_selectionlist()
 
 
-    def get_selected_data(self):
-        calendar_screen = self.app.SCREENS.get('calendar')
-        cursor = calendar_screen.calendar_widget.cursor_coordinate
-        encounter_time = calendar_screen.get_datetime_from_cell(calendar_screen.week_index, cursor.row, cursor.column)
-        encounter = conf.select_encounter_by_rdv(encounter_time)
-        return encounter.patient_id, encounter.encounter_id
+    # def get_selected_data(self):
+    #     calendar_screen = self.app.SCREENS.get('calendar')
+    #     cursor = calendar_screen.calendar_widget.cursor_coordinate
+    #     encounter_time = calendar_screen.get_datetime_from_cell(calendar_screen.week_index, cursor.row, cursor.column)
+    #     encounter = conf.select_encounter_by_rdv(encounter_time)
+    #     return encounter.patient_id, encounter.encounter_id
 
+
+    # def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
+    #     """Called when the worker state changes."""
+    #     if event.state.name == 'SUCCESS':
+    #         self.worker.append(event.worker)
+    #     if len(self.worker) == len(self.app.workers):
+    #         self.query_one('#textlog').write(f'[green]------------------DONE-----------------------------------------------')
+    #         self.worker = []
+        
     
-    def on_button_pressed(self, event: Button.Pressed) -> None:
+    def on_button_pressed(self, event: Button.Pressed):
         if event.button.id in ["export", "print"]:
-            pt_id, enc_id = self.get_selected_data()
-            patient = conf.select_patient_by_id(pt_id)
-            nb_aligners = self.show_selectionlist()
+            self.worker = []
+            selected_radio = self.query_one('#exports').pressed_button.id
+            if selected_radio == 'models':
+                calendar_screen: Calendar = self.app.SCREENS.get('calendar')
+                patient = calendar_screen.patient_widget.get_row_at(calendar_screen.patient_widget.cursor_coordinate.row)
 
-            selected_files = []
-            for file in self.selectionlist.selected:
-                filepath = f'/home/tarek/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}/{file}'
-                selected_files.append(f'"{filepath}"')
+                selected_files = []
+                for file in self.selectionlist.selected:
+                    filepath = f'/home/tarek/mediaserver/patients/{patient[0]} {patient[1]} {patient[2]}/{file}'
+                    selected_files.append(filepath)
 
-            command = f'prusa-slicer --export-sla --merge --load config.ini --output ttttttttt.sl1 ' + ' '.join(selected_files) + ' && ' + '/home/tarek/uvtools/UVtoolsCmd convert ttttttttt.sl1 pm3'
-            self.query_one('#progress').update(progress=0)
-            # self.log_feedback(self.selectionlist)
-            if platform == 'darwin':
-                pt_dir = f'/Volumes/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}/'
-            else:
-                pt_dir = f'Z:\\patients\\{pt_id} {patient.first_name} {patient.last_name}\\'
+                split_selected_files = [selected_files[i:i + 10] for i in range(0, len(selected_files), 10)]  
+
+                client = self.connect_to_server()
+                for i, chunk in enumerate(split_selected_files):
+                    client = self.connect_to_server()
+                    self.query_one('#progress').update(progress=0)
+                    pt_name = f'{patient[0]}-{patient[1]}-{patient[2]}-{i}.sl1'
+                    chunck_joined = "' '".join(chunk)
+                    prusa_cmd = "prusa-slicer --export-sla --merge --load config.ini --output"
+                    uvtools_cmd =  '/home/tarek/uvtools/UVtoolsCmd convert'
+                    command = f"{prusa_cmd} {pt_name} '{chunck_joined}' && {uvtools_cmd} {pt_name} pm3"
+                    self.slice(client=client, command=command)
 
 
-            link = self.get_nc_link(f'{pt_dir}video.mp4').get_link()
-            self.print_pt(pt_id, patient.first_name, patient.last_name, len(nb_aligners), link)
-            self.key_based_connect(command)
+                # if platform == 'darwin':
+                #     pt_dir = f'/Volumes/mediaserver/patients/{patient[0]} {patient[1]} {patient[2]}/'
+                # else:
+                #     pt_dir = f'Z:\\patients\\{pt_id} {patient.first_name} {patient.last_name}\\'
+
+
+                # link = self.get_nc_link(f'{pt_dir}video.mp4').get_link()
+                # self.print_pt(pt_id, patient.first_name, patient.last_name, len(nb_aligners), link)
+                # self.key_based_connect(command)
             
         elif event.button.id == 'toggle-all':
             self.selectionlist.toggle_all()
 
         elif event.button.id == "exit":
             self.app.pop_screen()
+
+
+
+    def connect_to_server(self):
+        if platform == 'win32':
+            key = 'C://Users//tarek//.ssh//win2'
+        elif platform == 'darwin':
+            key = '/Users/tarek/.ssh/id_rsa'
+
+        pkey = paramiko.RSAKey.from_private_key_file(key, passkey)
+        client = paramiko.SSHClient()
+        policy = paramiko.AutoAddPolicy()
+        client.set_missing_host_key_policy(policy)
+        client.connect(host, username=special_account, pkey=pkey)
+        return client
+    
+
+    @work(exclusive=False)
+    def slice(self, client, command):
+        try:
+            stdin, stdout, stderr = client.exec_command(command, get_pty=True)
+            self.query_one('#textlog').write(f'[bold teal]executing {command}')
+            for line in iter(stdout.readline, ""):
+                match = re.finditer(r'\d+(\.\d+)?%', line)
+                self.app.call_from_thread(self.query_one('#textlog').write ,line)
+                # self.query_one('#textlog').write(line)
+                if match:
+                    for pr in match:
+                        progress = round(float(pr.group()[0:-1]))
+                        self.app.call_from_thread(self.update_progress ,progress)
+            client.close()
+        except Exception as e:
+            self.log_error(str(e))
+
+
+
+
+
+
+    # def on_button_pressed(self, event: Button.Pressed):
+    #     if event.button.id in ["export", "print"]:
+    #         pt_id, enc_id = self.get_selected_data()
+    #         patient = conf.select_patient_by_id(pt_id)
+    #         nb_aligners = self.show_selectionlist()
+
+    #         selected_files = []
+    #         for file in self.selectionlist.selected:
+    #             filepath = f'/home/tarek/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}/{file}'
+    #             selected_files.append(f'"{filepath}"')
+
+    #         command = f'prusa-slicer --export-sla --merge --load config.ini --output ttttttttt.sl1 ' + ' '.join(selected_files) + ' && ' + '/home/tarek/uvtools/UVtoolsCmd convert ttttttttt.sl1 pm3'
+    #         self.query_one('#progress').update(progress=0)
+    #         # self.log_feedback(self.selectionlist)
+    #         if platform == 'darwin':
+    #             pt_dir = f'/Volumes/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}/'
+    #         else:
+    #             pt_dir = f'Z:\\patients\\{pt_id} {patient.first_name} {patient.last_name}\\'
+
+
+    #         link = self.get_nc_link(f'{pt_dir}video.mp4').get_link()
+    #         self.print_pt(pt_id, patient.first_name, patient.last_name, len(nb_aligners), link)
+    #         self.key_based_connect(command)
+            
+    #     elif event.button.id == 'toggle-all':
+    #         self.selectionlist.toggle_all()
+
+    #     elif event.button.id == "exit":
+    #         self.app.pop_screen()
 
     def print_pt(self, id, fname, lname, nb_models, link):
         with open(f'C://Users//tarek//OneDrive//Documents//bt//{id}.txt', 'w') as pt_file:
@@ -290,29 +390,6 @@ class PrintExportScreen(ModalScreen):
         nc.put_file(f'patients-animations6/video2.mp4', video)
         link_info = nc.share_file_with_link(f'patients-animations6/video2.mp4')
         return link_info
-
-
-    @work(exclusive=True)
-    def key_based_connect(self, command):
-        if platform == 'win32':
-            key = 'C://Users//tarek//.ssh//win2'
-        elif platform == 'darwin':
-            key = '/Users/tarek/.ssh/id_rsa'
-
-        pkey = paramiko.RSAKey.from_private_key_file(key, passkey)
-        client = paramiko.SSHClient()
-        policy = paramiko.AutoAddPolicy()
-        client.set_missing_host_key_policy(policy)
-        client.connect(host, username=special_account, pkey=pkey)
-        stdin, stdout, stderr = client.exec_command(command, get_pty=True)
-        for line in iter(stdout.readline, ""):
-            # match = re.findall(r'\d+\.\d+?%', line)
-            match = re.finditer(r'\d+(\.\d+)?%', line)
-            self.app.call_from_thread(self.query_one('#textlog').write ,line)
-            if match:
-                for pr in match:
-                    progress = round(float(pr.group()[0:-1]))
-                    self.app.call_from_thread(self.update_progress ,progress)
           
     
     def update_progress(self, progress):
