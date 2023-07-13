@@ -265,6 +265,7 @@ class PrintExportScreen(ModalScreen):
                 calendar_screen: Calendar = self.app.SCREENS.get('calendar')
                 patient = calendar_screen.patient_widget.get_row_at(calendar_screen.patient_widget.cursor_coordinate.row)
 
+
                 selected_files = []
                 for file in self.selectionlist.selected:
                     filepath = f'/home/tarek/mediaserver/patients/{patient[0]} {patient[1]} {patient[2]}/{file}'
@@ -283,16 +284,16 @@ class PrintExportScreen(ModalScreen):
                     command = f"{prusa_cmd} {pt_name} '{chunck_joined}' && {uvtools_cmd} {pt_name} pm3"
                     self.slice(client=client, command=command)
 
+                if platform == 'darwin':
+                    pt_dir = f'/Volumes/mediaserver/patients/{patient[0]} {patient[1]} {patient[2]}/'
+                else:
+                    pt_dir = f'Z:\\patients\\{patient[0]} {patient[1]} {patient[2]}\\'
 
-                # if platform == 'darwin':
-                #     pt_dir = f'/Volumes/mediaserver/patients/{patient[0]} {patient[1]} {patient[2]}/'
-                # else:
-                #     pt_dir = f'Z:\\patients\\{pt_id} {patient.first_name} {patient.last_name}\\'
-
-
-                # link = self.get_nc_link(f'{pt_dir}video.mp4').get_link()
-                # self.print_pt(pt_id, patient.first_name, patient.last_name, len(nb_aligners), link)
-                # self.key_based_connect(command)
+                try:
+                    link = self.get_nc_link(f'{pt_dir}video.mp4').get_link()
+                    self.print_pt(patient, len(selected_files)/2, link)
+                except Exception as e:
+                    self.log_error(str(e))
             
         elif event.button.id == 'toggle-all':
             self.selectionlist.toggle_all()
@@ -368,18 +369,19 @@ class PrintExportScreen(ModalScreen):
     #     elif event.button.id == "exit":
     #         self.app.pop_screen()
 
-    def print_pt(self, id, fname, lname, nb_models, link):
+    def print_pt(self, patient, nb_models, link):
         with open(f'C://Users//tarek//OneDrive//Documents//bt//{id}.txt', 'w') as pt_file:
             pt_file.write('ptID,ptFName,ptLName,UL,nbModels' + '\n')
-            pt_file.write(f'{id},{fname},{lname},Lower,{nb_models}')
+            pt_file.write(f'{patient[0]},{patient[1]},{patient[2]},Lower,{nb_models}')
 
         with open(f'C://Users//tarek//OneDrive//Documents//bt//{id}2.txt', 'w') as pt_file:
             pt_file.write('ptID,ptFName,ptLName,UL,nbModels' + '\n')
-            pt_file.write(f'{id},{fname},{lname},Upper,{nb_models}')
+            pt_file.write(f'{patient[0]},{patient[1]},{patient[2]},Upper,{nb_models}')
 
         with open(f'C://Users//tarek//OneDrive//Documents//bt2//{id}.txt', 'w') as pt_file:
             pt_file.write('ptFName,ptLName,link' + '\n')
-            pt_file.write(f'{fname},{lname},{link}')
+            pt_file.write(f'{patient[1]},{patient[2]},{link}')
+
 
     
     def get_nc_link(self, video):
