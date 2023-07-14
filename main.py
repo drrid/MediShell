@@ -239,15 +239,6 @@ class PrintExportScreen(ModalScreen):
     def on_radio_set_changed(self, event: RadioSet.Changed):
         self.show_selectionlist()
 
-
-    # def get_selected_data(self):
-    #     calendar_screen = self.app.SCREENS.get('calendar')
-    #     cursor = calendar_screen.calendar_widget.cursor_coordinate
-    #     encounter_time = calendar_screen.get_datetime_from_cell(calendar_screen.week_index, cursor.row, cursor.column)
-    #     encounter = conf.select_encounter_by_rdv(encounter_time)
-    #     return encounter.patient_id, encounter.encounter_id
-
-
     # def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
     #     """Called when the worker state changes."""
     #     if event.state.name == 'SUCCESS':
@@ -264,7 +255,6 @@ class PrintExportScreen(ModalScreen):
             if selected_radio == 'models':
                 calendar_screen: Calendar = self.app.SCREENS.get('calendar')
                 patient = calendar_screen.patient_widget.get_row_at(calendar_screen.patient_widget.cursor_coordinate.row)
-
 
                 selected_files = []
                 for file in self.selectionlist.selected:
@@ -300,7 +290,6 @@ class PrintExportScreen(ModalScreen):
 
         elif event.button.id == "exit":
             self.app.pop_screen()
-
 
 
     def connect_to_server(self):
