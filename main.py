@@ -335,40 +335,6 @@ class PrintExportScreen(ModalScreen):
             self.log_error(str(e))
 
 
-
-
-
-
-    # def on_button_pressed(self, event: Button.Pressed):
-    #     if event.button.id in ["export", "print"]:
-    #         pt_id, enc_id = self.get_selected_data()
-    #         patient = conf.select_patient_by_id(pt_id)
-    #         nb_aligners = self.show_selectionlist()
-
-    #         selected_files = []
-    #         for file in self.selectionlist.selected:
-    #             filepath = f'/home/tarek/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}/{file}'
-    #             selected_files.append(f'"{filepath}"')
-
-    #         command = f'prusa-slicer --export-sla --merge --load config.ini --output ttttttttt.sl1 ' + ' '.join(selected_files) + ' && ' + '/home/tarek/uvtools/UVtoolsCmd convert ttttttttt.sl1 pm3'
-    #         self.query_one('#progress').update(progress=0)
-    #         # self.log_feedback(self.selectionlist)
-    #         if platform == 'darwin':
-    #             pt_dir = f'/Volumes/mediaserver/patients/{pt_id} {patient.first_name} {patient.last_name}/'
-    #         else:
-    #             pt_dir = f'Z:\\patients\\{pt_id} {patient.first_name} {patient.last_name}\\'
-
-
-    #         link = self.get_nc_link(f'{pt_dir}video.mp4').get_link()
-    #         self.print_pt(pt_id, patient.first_name, patient.last_name, len(nb_aligners), link)
-    #         self.key_based_connect(command)
-            
-    #     elif event.button.id == 'toggle-all':
-    #         self.selectionlist.toggle_all()
-
-    #     elif event.button.id == "exit":
-    #         self.app.pop_screen()
-
     def print_pt(self, patient, nb_models, link):
         with open(f'C://Users//tarek//OneDrive//Documents//bt//{id}.txt', 'w') as pt_file:
             pt_file.write('ptID,ptFName,ptLName,UL,nbModels' + '\n')
@@ -383,7 +349,6 @@ class PrintExportScreen(ModalScreen):
             pt_file.write(f'{patient[1]},{patient[2]},{link}')
 
 
-    
     def get_nc_link(self, video):
         nc = nextcloud_client.Client(nc_client)
         nc.login(nc_user, nc_pass)
