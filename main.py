@@ -325,15 +325,15 @@ class PrintExportScreen(ModalScreen):
 
 
     def print_pt(self, patient, nb_models, link):
-        with open(f'C://Users//tarek//OneDrive//Documents//bt//{id}.txt', 'w') as pt_file:
+        with open(f'C://Users//tarek//OneDrive//Documents//bt//{patient[0]}.txt', 'w') as pt_file:
             pt_file.write('ptID,ptFName,ptLName,UL,nbModels' + '\n')
             pt_file.write(f'{patient[0]},{patient[1]},{patient[2]},Lower,{nb_models}')
 
-        with open(f'C://Users//tarek//OneDrive//Documents//bt//{id}2.txt', 'w') as pt_file:
+        with open(f'C://Users//tarek//OneDrive//Documents//bt//{patient[0]}2.txt', 'w') as pt_file:
             pt_file.write('ptID,ptFName,ptLName,UL,nbModels' + '\n')
             pt_file.write(f'{patient[0]},{patient[1]},{patient[2]},Upper,{nb_models}')
 
-        with open(f'C://Users//tarek//OneDrive//Documents//bt2//{id}.txt', 'w') as pt_file:
+        with open(f'C://Users//tarek//OneDrive//Documents//bt2//{patient[0]}.txt', 'w') as pt_file:
             pt_file.write('ptFName,ptLName,link' + '\n')
             pt_file.write(f'{patient[1]},{patient[2]},{link}')
 
