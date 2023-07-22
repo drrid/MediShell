@@ -33,6 +33,7 @@ nc_client = os.getenv('NC_CLIENT')
 nc_user = os.getenv('NC_USER')
 nc_pass = os.getenv('NC_PASS')
 special_account = os.getenv('SPECIAL_ACCOUNT')
+ubuntu_pass = os.getenv('UBUNTU_PASS')
 
 medicaments = [
     ('LEXIN 1 g (CP) - 1cp * 2/J', 'lexin'),('BIOROGYL(CP)', 'biorogyl'),('ROVAMYCINE 3M(CP)', 'rovamycine_3m'),
@@ -249,60 +250,57 @@ class PrintExportScreen(ModalScreen):
         
     
     def on_button_pressed(self, event: Button.Pressed):
-        if event.button.id in ["export", "print"]:
-            self.worker = []
-            selected_radio = self.query_one('#exports').pressed_button.id
-            if selected_radio == 'models':
-                calendar_screen: Calendar = self.app.SCREENS.get('calendar')
-                patient = calendar_screen.patient_widget.get_row_at(calendar_screen.patient_widget.cursor_coordinate.row)
+        try:
+            if event.button.id in ["export", "print"]:
+                self.worker = []
+                selected_radio = self.query_one('#exports').pressed_button.id
+                if selected_radio == 'models':
+                    calendar_screen: Calendar = self.app.SCREENS.get('calendar')
+                    patient = calendar_screen.patient_widget.get_row_at(calendar_screen.patient_widget.cursor_coordinate.row)
 
-                selected_files = []
-                for file in self.selectionlist.selected:
-                    filepath = f'/home/tarek/mediaserver/patients/{patient[0]} {patient[1]} {patient[2]}/{file}'
-                    selected_files.append(filepath)
+                    selected_files = []
+                    for file in self.selectionlist.selected:
+                        filepath = f'/home/tarek/zfsmedia2/patients/{patient[0]} {patient[1]} {patient[2]}/{file}'
+                        selected_files.append(filepath)
 
-                split_selected_files = [selected_files[i:i + 10] for i in range(0, len(selected_files), 10)]  
-
-                client = self.connect_to_server()
-                for i, chunk in enumerate(split_selected_files):
+                    split_selected_files = [selected_files[i:i + 10] for i in range(0, len(selected_files), 10)]  
+                    timestamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
                     client = self.connect_to_server()
-                    self.query_one('#progress').update(progress=0)
-                    pt_name = f'{patient[0]}-{patient[1]}-{patient[2]}-{i}.sl1'
-                    chunck_joined = "' '".join(chunk)
-                    prusa_cmd = "prusa-slicer --export-sla --merge --load config.ini --output"
-                    uvtools_cmd =  '/home/tarek/uvtools/UVtoolsCmd convert'
-                    command = f"{prusa_cmd} {pt_name} '{chunck_joined}' && {uvtools_cmd} {pt_name} pm3"
-                    self.slice(client=client, command=command)
+                    for i, chunk in enumerate(split_selected_files):
+                        client = self.connect_to_server()
+                        self.query_one('#progress').update(progress=0)
+                        pt_name = f"'/home/tarek/zfsmedia2/patients/{patient[0]} {patient[1]} {patient[2]}/{len(selected_files)}-{timestamp}-{i}.sl1'"
+                        chunck_joined = "' '".join(chunk)
+                        prusa_cmd = "prusa-slicer --export-sla --merge --load config.ini --output"
+                        uvtools_cmd =  '/home/tarek/uvtools/UVtoolsCmd convert'
+                        command = f"{prusa_cmd} {pt_name} '{chunck_joined}' && {uvtools_cmd} {pt_name} pm3"
+                        # self.slice(client=client, command=command)
 
-                if platform == 'darwin':
-                    pt_dir = f'/Volumes/mediaserver/patients/{patient[0]} {patient[1]} {patient[2]}/'
-                else:
-                    pt_dir = f'Z:\\patients\\{patient[0]} {patient[1]} {patient[2]}\\'
+                    if platform == 'darwin':
+                        pt_dir = f'/Volumes/mediaserver/patients/{patient[0]} {patient[1]} {patient[2]}/'
+                    else:
+                        pt_dir = f'Z:\\patients\\{patient[0]} {patient[1]} {patient[2]}\\'
 
-                try:
-                    link = self.get_nc_link(f'{pt_dir}video.mp4').get_link()
+                    
+                    link = self.get_nc_link(patient)
                     self.print_pt(patient, len(selected_files)/2, link)
-                except Exception as e:
-                    self.log_error(str(e))
-            
-        elif event.button.id == 'toggle-all':
-            self.selectionlist.toggle_all()
 
-        elif event.button.id == "exit":
-            self.app.pop_screen()
+            
+            elif event.button.id == 'toggle-all':
+                self.selectionlist.toggle_all()
+
+            elif event.button.id == "exit":
+                self.app.pop_screen()
+        
+        except Exception as e:
+            self.log_error(str(e))
 
 
     def connect_to_server(self):
-        if platform == 'win32':
-            key = 'C://Users//tarek//.ssh//win2'
-        elif platform == 'darwin':
-            key = '/Users/tarek/.ssh/id_rsa'
-
-        pkey = paramiko.RSAKey.from_private_key_file(key, passkey)
         client = paramiko.SSHClient()
         policy = paramiko.AutoAddPolicy()
         client.set_missing_host_key_policy(policy)
-        client.connect(host, username=special_account, pkey=pkey)
+        client.connect(host, username=special_account, password=ubuntu_pass)
         return client
     
 
@@ -338,14 +336,17 @@ class PrintExportScreen(ModalScreen):
             pt_file.write(f'{patient[1]},{patient[2]},{link}')
 
 
-    def get_nc_link(self, video):
-        nc = nextcloud_client.Client(nc_client)
-        nc.login(nc_user, nc_pass)
-        # nc.mkdir('patients-animations6')
-        # video_name = video.split('.')[-1]
-        nc.put_file(f'patients-animations6/video2.mp4', video)
-        link_info = nc.share_file_with_link(f'patients-animations6/video2.mp4')
-        return link_info
+
+
+    def get_nc_link(self, patient):
+        base = 'https://onyxceph.tarekserver.me/'
+        root_path = f'Y://onyx-animation//clients//Client0//{patient[0]}'
+        for dirpath, _, file in os.walk(root_path):
+            for f in file:
+                if f.endswith('.iiwgl'):
+                    url = f'{base}?mlink={base}clients/Client0/{patient[0]}/{f}&fg=fff&bg=088&p=pms'
+                    self.log_feedback(url)
+                    return url
           
     
     def update_progress(self, progress):
