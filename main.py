@@ -702,13 +702,16 @@ class Calendar(Screen):
 
 
     def on_data_table_cell_selected(self, message: DataTable.CellSelected):
-        if message.control.id == 'enc_table':
-            self.query_one('#notes').focus()
-            self.query_one('#notes').value = ''
-        if message.control.id == 'cal_table':
-            self.selected_calendar()
-            self.selected_calendar()
-            # self.update_tooltip()
+        try:
+            if message.control.id == 'enc_table':
+                self.query_one('#notes').focus()
+                self.query_one('#notes').value = ''
+            if message.control.id == 'cal_table':
+                self.selected_calendar()
+                self.selected_calendar()
+                # self.update_tooltip()
+        except Exception as e:
+            self.log_error(e)
 
 
     # def on_data_table_cell_highlighted(self, message: DataTable.CellHighlighted):
@@ -749,22 +752,24 @@ class Calendar(Screen):
 
 
     def on_data_table_row_selected(self, message: DataTable.RowSelected):
-        if message.control.id == 'pt_table':
-            if self.modify_pt == True:
-                self.action_modify_patient()
-            self.encounter_widget.cursor_type = 'row'
-            cursor = self.calendar_widget.cursor_coordinate
-            cursor_value = self.calendar_widget.get_cell_at(cursor)
-            if '_' not in cursor_value:
+        try:
+            if message.control.id == 'pt_table':
+                if self.modify_pt == True:
+                    self.action_modify_patient()
+                self.encounter_widget.cursor_type = 'row'
+                cursor = self.calendar_widget.cursor_coordinate
+                cursor_value = self.calendar_widget.get_cell_at(cursor)
+                if '_' not in cursor_value:
+                    self.calendar_widget.move_cursor(row=0, column=0)
+                self.show_encounters()
+            elif message.control.id == 'enc_table':
+                self.encounter_widget.cursor_type = 'cell'
                 self.calendar_widget.move_cursor(row=0, column=0)
-            self.show_encounters()
-        elif message.control.id == 'enc_table':
-            self.encounter_widget.cursor_type = 'cell'
-            self.calendar_widget.move_cursor(row=0, column=0)
+        except Exception as e:
+            self.log_error(e)
             
 
     
-
 # ------------------------------------------------------------------------Main App-----------------------------------------------------------------------------------------
 class PMSApp(App):
     BINDINGS = [("ctrl+left", "previous_week", "Previous Week"),
