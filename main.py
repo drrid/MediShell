@@ -340,7 +340,7 @@ class PrintExportScreen(ModalScreen):
 
     def get_nc_link(self, patient):
         base = 'https://onyxceph.tarekserver.me/'
-        root_path = f'Y://onyx-animation//clients//Client0//{patient[0]}'
+        root_path = f'Z://onyx-animation//clients//Client0//{patient[0]}'
         for dirpath, _, file in os.walk(root_path):
             for f in file:
                 if f.endswith('.iiwgl'):
