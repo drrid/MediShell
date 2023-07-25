@@ -482,8 +482,13 @@ class Calendar(Screen):
 
     def on_button_pressed(self, event: Button.Pressed):
         
+        try:
+            patient_id = self.patient_widget.get_cell_at(Coordinate(cursor.row, 0))
+        except Exception as e:
+            self.log_error(e)
+
         cursor = self.patient_widget.cursor_coordinate
-        patient_id = self.patient_widget.get_cell_at(Coordinate(cursor.row, 0))
+        # patient_id = self.patient_widget.get_cell_at(Coordinate(cursor.row, 0))
         first_name = self.query_one('#fname').value.capitalize()
         last_name = self.query_one('#lname').value.capitalize()
         phone = self.query_one('#phone').value
