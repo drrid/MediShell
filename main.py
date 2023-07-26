@@ -277,6 +277,8 @@ class PrintExportScreen(ModalScreen):
                 self.split_selected_files = split_selected_files
 
                 if event.button.id == "export":
+                    destination_flash_drive = self.get_flash_drive_path_by_name('TAREK')
+                    self.delete_files_in_directory(destination_flash_drive)
                 
                     client = self.connect_to_server()
                     for i, chunk in enumerate(split_selected_files):
@@ -284,11 +286,10 @@ class PrintExportScreen(ModalScreen):
                         self.query_one('#progress').update(progress=0)
                         pt_name = f"'/home/tarek/zfsmedia2/patients/{patient[0]} {patient[1]} {patient[2]}/{len(selected_files)}-{timestamp}-{i}.sl1'"
 
-                        # if platform == 'darwin':
-                        #     pt_name_final = f"'/Volumes/mediaserver/patients/{patient[0]} {patient[1]} {patient[2]}/{len(selected_files)}-{timestamp}-{i}.pm3'"
-                        # else:
-                        #     pt_name_final = f"'Z:\\patients\\{patient[0]} {patient[1]} {patient[2]}\\{len(selected_files)}-{timestamp}-{i}.pm3'"
-                        pt_name_final = Path(f'Z:\\patients\\{patient[0]} {patient[1]} {patient[2]}\\{len(selected_files)}-{timestamp}-{i}.pm3')
+                        if platform == 'darwin':
+                            pt_name_final = os.path.join(f"/Volumes/mediaserver/patients/{patient[0]} {patient[1]} {patient[2]}/", f'{len(selected_files)}-{timestamp}-{i}.pm3')
+                        else:
+                            pt_name_final = f'Z:\\patients\\{patient[0]} {patient[1]} {patient[2]}\\{len(selected_files)}-{timestamp}-{i}.pm3'
 
                         self.to_print.append(pt_name_final)
 
@@ -357,7 +358,7 @@ class PrintExportScreen(ModalScreen):
             client.close()
 
             for i, file_to_print in enumerate(self.to_print):
-                self.copy_file_to_flash_drive(file_to_print, 'TAREK', f'{i}.pm3')
+                self.copy_file_to_flash_drive(file_to_print, 'TAREK', f'{os.path.basename(file_to_print)}')
             
         except Exception as e:
             self.log_error(str(e))
@@ -421,7 +422,6 @@ class PrintExportScreen(ModalScreen):
             output = subprocess.check_output(cmd, shell=True).decode().strip()
             if output:
                 return output.split()[0]
-
         return None
 
     def delete_files_in_directory(self, directory):
@@ -441,11 +441,7 @@ class PrintExportScreen(ModalScreen):
     def copy_file_to_flash_drive(self, source_file_path, destination_flash_drive_name, new_file_name):
         try:
             # Check if the source file exists
-            # if not os.path.exists(source_file_path):
-            #     self.query_one('#textlog').write("Source file does not exist." + source_file_path)
-            #     return
-
-            if not source_file_path.exists:
+            if not os.path.exists(source_file_path):
                 self.query_one('#textlog').write("Source file does not exist." + source_file_path)
                 return
 
@@ -456,7 +452,7 @@ class PrintExportScreen(ModalScreen):
                 return
             self.query_one('#textlog').write(destination_flash_drive)
             # Remove all files from the flash drive
-            self.delete_files_in_directory(destination_flash_drive)
+            # self.delete_files_in_directory(destination_flash_drive)
 
             # Combine the destination path with the new file name
             destination_path = os.path.join(destination_flash_drive, new_file_name)
