@@ -24,6 +24,10 @@ import time as tm
 from datetime import date, timedelta
 import openpyxl
 
+import shutil
+import subprocess
+from pathlib import Path
+
 
 load_dotenv()
 passkey = os.getenv('PASSKEY')
@@ -173,6 +177,7 @@ class PrintExportScreen(ModalScreen):
     nb_aligners = []
     worker = []
     split_selected_files = []
+    to_print = []
     
     def compose(self):
         self.selectionlist = SelectionList[int]()
@@ -241,13 +246,13 @@ class PrintExportScreen(ModalScreen):
 
 
     def on_worker_state_changed(self, event: Worker.StateChanged):
-        self.log_feedback('Running')
+        # self.log_feedback('Running')
         for worker in self.workers:
             if worker.is_finished:
                 self.worker.append(worker)
 
         if len(self.worker) == len(self.split_selected_files):
-                self.log_feedback('finished all')
+                # self.log_feedback('finished all')
                 self.cleanup()
         
 
@@ -255,6 +260,8 @@ class PrintExportScreen(ModalScreen):
         try:
             self.worker = []
             self.split_selected_files = []
+            self.to_print = []
+
             selected_radio = self.query_one('#exports').pressed_button.id
             if selected_radio == 'models':
                 calendar_screen: Calendar = self.app.SCREENS.get('calendar')
@@ -276,6 +283,15 @@ class PrintExportScreen(ModalScreen):
                         client = self.connect_to_server()
                         self.query_one('#progress').update(progress=0)
                         pt_name = f"'/home/tarek/zfsmedia2/patients/{patient[0]} {patient[1]} {patient[2]}/{len(selected_files)}-{timestamp}-{i}.sl1'"
+
+                        # if platform == 'darwin':
+                        #     pt_name_final = f"'/Volumes/mediaserver/patients/{patient[0]} {patient[1]} {patient[2]}/{len(selected_files)}-{timestamp}-{i}.pm3'"
+                        # else:
+                        #     pt_name_final = f"'Z:\\patients\\{patient[0]} {patient[1]} {patient[2]}\\{len(selected_files)}-{timestamp}-{i}.pm3'"
+                        pt_name_final = Path(f'Z:\\patients\\{patient[0]} {patient[1]} {patient[2]}\\{len(selected_files)}-{timestamp}-{i}.pm3')
+
+                        self.to_print.append(pt_name_final)
+
                         chunck_joined = "' '".join(chunk)
                         prusa_cmd = "prusa-slicer --export-sla --merge --load config.ini --output"
                         uvtools_cmd =  '/home/tarek/uvtools/UVtoolsCmd convert'
@@ -339,24 +355,26 @@ class PrintExportScreen(ModalScreen):
                 self.app.call_from_thread(self.query_one('#textlog').write ,line)
 
             client.close()
+
+            for i, file_to_print in enumerate(self.to_print):
+                self.copy_file_to_flash_drive(file_to_print, 'TAREK', f'{i}.pm3')
+            
         except Exception as e:
             self.log_error(str(e))
 
 
     def print_pt(self, patient, nb_models, link):
-        with open(f'C://Users//tarek//OneDrive//Documents//bt//{patient[0]}.txt', 'w') as pt_file:
+        with open(f'C:\\Users\\tarek\\OneDrive\\Documents\\bt\\{patient[0]}.txt', 'w') as pt_file:
             pt_file.write('ptID,ptFName,ptLName,UL,nbModels' + '\n')
             pt_file.write(f'{patient[0]},{patient[1]},{patient[2]},Lower,{nb_models}')
 
-        with open(f'C://Users//tarek//OneDrive//Documents//bt//{patient[0]}2.txt', 'w') as pt_file:
+        with open(f'C:\\Users\\tarek\\OneDrive\\Documents\\bt\\{patient[0]}2.txt', 'w') as pt_file:
             pt_file.write('ptID,ptFName,ptLName,UL,nbModels' + '\n')
             pt_file.write(f'{patient[0]},{patient[1]},{patient[2]},Upper,{nb_models}')
 
-        with open(f'C://Users//tarek//OneDrive//Documents//bt2//{patient[0]}.txt', 'w') as pt_file:
+        with open(f'C:\\Users\\tarek\\OneDrive\\Documents\\bt2\\{patient[0]}.txt', 'w') as pt_file:
             pt_file.write('ptFName,ptLName,link' + '\n')
             pt_file.write(f'{patient[1]},{patient[2]},{link}')
-
-
 
 
     def get_onyxceph_link(self, patient):
@@ -366,7 +384,7 @@ class PrintExportScreen(ModalScreen):
             if platform == 'darwin':
                 root_path = f'/Volumes/mediaserver/onyx-animation/clients/Client0/{patient[0]}'
             else:
-                root_path = f'Z://onyx-animation//clients//Client0//{patient[0]}'
+                root_path = f'Z:\\onyx-animation\\clients\\Client0\\{patient[0]}'
 
             for dirpath, _, file in os.walk(root_path):
                 for f in file:
@@ -392,6 +410,63 @@ class PrintExportScreen(ModalScreen):
         self.query_one('#feedback_popup').update(f'[bold red]{str(msg)}')
 
 
+    def get_flash_drive_path_by_name(self, name):
+        if platform == "win32":
+            cmd = f'wmic logicaldisk where "VolumeName=\'{name}\'" get caption'
+            output = subprocess.check_output(cmd, shell=True).decode().strip()
+            if len(output) > 1:
+                return output.split('\n')[1].strip()
+        else:
+            cmd = 'df -H | grep "/Volumes/{}"'.format(name)
+            output = subprocess.check_output(cmd, shell=True).decode().strip()
+            if output:
+                return output.split()[0]
+
+        return None
+
+    def delete_files_in_directory(self, directory):
+        try:
+            for filename in os.listdir(directory):
+                file_path = os.path.join(directory, filename)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+                    self.query_one('#textlog').write(f"Deleted: {filename}")
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+                    self.query_one('#textlog').write(f"Deleted directory: {filename}")
+            self.query_one('#textlog').write("All files deleted successfully.")
+        except Exception as e:
+            self.query_one('#textlog').write(f"An error occurred while deleting files: {str(e)}")
+
+    def copy_file_to_flash_drive(self, source_file_path, destination_flash_drive_name, new_file_name):
+        try:
+            # Check if the source file exists
+            # if not os.path.exists(source_file_path):
+            #     self.query_one('#textlog').write("Source file does not exist." + source_file_path)
+            #     return
+
+            if not source_file_path.exists:
+                self.query_one('#textlog').write("Source file does not exist." + source_file_path)
+                return
+
+            # Get the mount point of the destination flash drive
+            destination_flash_drive = self.get_flash_drive_path_by_name(destination_flash_drive_name)
+            if not destination_flash_drive:
+                self.query_one('#textlog').write(f"Flash drive with name '{destination_flash_drive_name}' not found.")
+                return
+            self.query_one('#textlog').write(destination_flash_drive)
+            # Remove all files from the flash drive
+            self.delete_files_in_directory(destination_flash_drive)
+
+            # Combine the destination path with the new file name
+            destination_path = os.path.join(destination_flash_drive, new_file_name)
+
+            # Copy the file to the flash drive
+            shutil.copy2(source_file_path, destination_path)
+
+            self.query_one('#textlog').write("File copied successfully.")
+        except Exception as e:
+            self.query_one('#textlog').write(f"An error occurred: {str(e)}")
 
 # Calendar Screen --------------------------------------------------------------------------------------------------------------------------------------------------
 class Calendar(Screen):
