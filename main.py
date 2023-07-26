@@ -19,7 +19,6 @@ if platform == 'win32':
 import paramiko
 from dotenv import load_dotenv
 from textual.worker import Worker, get_current_worker
-import nextcloud_client
 import time as tm
 
 from datetime import date, timedelta
@@ -29,9 +28,9 @@ import openpyxl
 load_dotenv()
 passkey = os.getenv('PASSKEY')
 host = os.getenv('HOST')
-nc_client = os.getenv('NC_CLIENT')
-nc_user = os.getenv('NC_USER')
-nc_pass = os.getenv('NC_PASS')
+# nc_client = os.getenv('NC_CLIENT')
+# nc_user = os.getenv('NC_USER')
+# nc_pass = os.getenv('NC_PASS')
 special_account = os.getenv('SPECIAL_ACCOUNT')
 ubuntu_pass = os.getenv('UBUNTU_PASS')
 
@@ -253,20 +252,22 @@ class PrintExportScreen(ModalScreen):
     
     def on_button_pressed(self, event: Button.Pressed):
         try:
-            if event.button.id in ["export", "print"]:
-                self.worker = []
-                selected_radio = self.query_one('#exports').pressed_button.id
-                if selected_radio == 'models':
-                    calendar_screen: Calendar = self.app.SCREENS.get('calendar')
-                    patient = calendar_screen.patient_widget.get_row_at(calendar_screen.patient_widget.cursor_coordinate.row)
+            self.worker = []
+            selected_radio = self.query_one('#exports').pressed_button.id
+            if selected_radio == 'models':
+                calendar_screen: Calendar = self.app.SCREENS.get('calendar')
+                patient = calendar_screen.patient_widget.get_row_at(calendar_screen.patient_widget.cursor_coordinate.row)
 
-                    selected_files = []
-                    for file in self.selectionlist.selected:
-                        filepath = f'/home/tarek/zfsmedia2/patients/{patient[0]} {patient[1]} {patient[2]}/{file}'
-                        selected_files.append(filepath)
+                selected_files = []
+                for file in self.selectionlist.selected:
+                    filepath = f'/home/tarek/zfsmedia2/patients/{patient[0]} {patient[1]} {patient[2]}/{file}'
+                    selected_files.append(filepath)
 
-                    split_selected_files = [selected_files[i:i + 10] for i in range(0, len(selected_files), 10)]  
-                    timestamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+                split_selected_files = [selected_files[i:i + 10] for i in range(0, len(selected_files), 10)]  
+                timestamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+                if event.button.id == "export":
+                
                     client = self.connect_to_server()
                     for i, chunk in enumerate(split_selected_files):
                         client = self.connect_to_server()
@@ -276,23 +277,20 @@ class PrintExportScreen(ModalScreen):
                         prusa_cmd = "prusa-slicer --export-sla --merge --load config.ini --output"
                         uvtools_cmd =  '/home/tarek/uvtools/UVtoolsCmd convert'
                         command = f"{prusa_cmd} {pt_name} '{chunck_joined}' && {uvtools_cmd} {pt_name} pm3"
-                        # self.slice(client=client, command=command)
-
-                    if platform == 'darwin':
-                        pt_dir = f'/Volumes/mediaserver/patients/{patient[0]} {patient[1]} {patient[2]}/'
-                    else:
-                        pt_dir = f'Z:\\patients\\{patient[0]} {patient[1]} {patient[2]}\\'
+                        self.slice(client=client, command=command)
 
                     
-                    link = self.get_nc_link(patient)
-                    self.print_pt(patient, len(selected_files)/2, link)
+                elif event.button.id == "print":
+                    self.print_pt(patient, len(selected_files)/2, self.get_onyxceph_link(patient))
 
-            
-            elif event.button.id == 'toggle-all':
-                self.selectionlist.toggle_all()
+                elif event.button.id == 'toggle-all':
+                    if len(self.selectionlist.selected) == self.selectionlist.option_count:
+                        self.selectionlist.deselect_all()
+                    else:
+                        self.selectionlist.select_all()
 
-            elif event.button.id == "exit":
-                self.app.pop_screen()
+                elif event.button.id == "exit":
+                    self.app.pop_screen()
         
         except Exception as e:
             self.log_error(str(e))
@@ -340,19 +338,30 @@ class PrintExportScreen(ModalScreen):
 
 
 
-    def get_nc_link(self, patient):
-        base = 'https://onyxceph.tarekserver.me/'
-        root_path = f'Z://onyx-animation//clients//Client0//{patient[0]}'
-        for dirpath, _, file in os.walk(root_path):
-            for f in file:
-                if f.endswith('.iiwgl'):
-                    url = f'{base}?mlink={base}clients/Client0/{patient[0]}/{f}&fg=fff&bg=088&p=pms'
-                    self.log_feedback(url)
-                    return url
+    def get_onyxceph_link(self, patient):
+        try:
+            base = 'https://onyxceph.tarekserver.me/'
+
+            if platform == 'darwin':
+                root_path = f'/Volumes/mediaserver/onyx-animation/clients/Client0/{patient[0]}'
+            else:
+                root_path = f'Z://onyx-animation//clients//Client0//{patient[0]}'
+
+            for dirpath, _, file in os.walk(root_path):
+                for f in file:
+                    if f.endswith('.iiwgl'):
+                        url = f'{base}?mlink={base}clients/Client0/{patient[0]}/{f}&fg=088&bg=134&p=pms'
+                        self.log_feedback(url)
+                        return url
+        except Exception as e:
+            self.log_error('Error in get_onyxceph_link' + str(e))
           
     
     def update_progress(self, progress):
-        self.query_one('#progress').update(progress=progress)
+        try:
+            self.query_one('#progress').update(progress=progress)
+        except Exception as e:
+            self.log_error(str(e))
 
 
     def log_feedback(self, msg):
