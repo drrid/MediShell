@@ -205,36 +205,38 @@ class PrintExportScreen(ModalScreen):
         self.show_selectionlist()
 
     def show_selectionlist(self):
+        try:
             self.selectionlist.clear_options()
             selected_radio = self.query_one('#exports').pressed_button.id
+
             if selected_radio == 'models':
-                try:
-                    calendar_screen: Calendar = self.app.SCREENS.get('calendar')
-                    patient = calendar_screen.patient_widget.get_row_at(calendar_screen.patient_widget.cursor_coordinate.row)
+                calendar_screen: Calendar = self.app.SCREENS.get('calendar')
+                patient = calendar_screen.patient_widget.get_row_at(calendar_screen.patient_widget.cursor_coordinate.row)
+                self.selectionlist.border_title = f'{patient[0]} {patient[1]} {patient[2]}'
 
-                    if platform == 'darwin':
-                        pt_dir = f'/Volumes/mediaserver/patients/{patient[0]} {patient[1]} {patient[2]}'
-                    else:
-                        pt_dir = f'Z:\\patients\\{patient[0]} {patient[1]} {patient[2]}'
+                if platform == 'darwin':
+                    pt_dir = f'/Volumes/mediaserver/patients/{patient[0]} {patient[1]} {patient[2]}'
+                else:
+                    pt_dir = f'Z:\\patients\\{patient[0]} {patient[1]} {patient[2]}'
 
-                    aligner_files = []
+                self.nb_aligners = []
+                scanned_files = os.listdir(pt_dir)
 
-                    for file in natsorted(os.listdir(pt_dir)):
-                        if file.endswith(f'.stl'):
-                            aligner_files.append(file)
-                            self.selectionlist.add_option((file.split('_')[-1], file))
-                    self.nb_aligners = aligner_files
-                except Exception as e:
-                    self.log_error(str(e))
+                for file in natsorted(scanned_files):
+                    if file.endswith(f'.stl'):
+                        self.nb_aligners.append(file)
+                        self.selectionlist.add_option((file.split('_')[-1], file))
+                if len(self.nb_aligners) == 0:
+                    self.log_feedback('no STL files found!')
 
             elif selected_radio == 'prescription':
-                try:
-                    self.selectionlist.add_option(('Pano', 'pano'))
-                    self.selectionlist.add_option(('Pano + Teleradiographie', 'pano_tlr'))
-                    self.selectionlist.add_option(('Certificat', 'certificat'))
-                    self.selectionlist.add_option(('Empty', 'empty'))
-                except Exception as e:
-                    self.log_error(str(e))
+                self.selectionlist.add_option(('Pano', 'pano'))
+                self.selectionlist.add_option(('Pano + Teleradiographie', 'pano_tlr'))
+                self.selectionlist.add_option(('Certificat', 'certificat'))
+                self.selectionlist.add_option(('Empty', 'empty'))
+
+        except Exception as e:
+            self.log_error('Error in show_selectionlist: ' + str(e))
 
 
     def on_radio_set_changed(self, event: RadioSet.Changed):
@@ -407,7 +409,7 @@ class Calendar(Screen):
     
     async def update_calendar_periodically(self) -> None:
         while True:
-            await asyncio.sleep(10)  # Update every 5 seconds
+            await asyncio.sleep(10)  # Update every 10 seconds
             self.show_calendar(self.week_index)
 
     def on_mount(self):
@@ -425,14 +427,7 @@ class Calendar(Screen):
         self.show_calendar(self.week_index)
         self.show_patients()
         self.show_encounters()
-        # self.update_tooltip()
 
-
-    # def update_tooltip(self):
-    #     cursor = self.calendar_widget.hover_row
-    #     enc_time = self.calendar_widget.get_cell_at(Coordinate(cursor,0))
-    #     self.calendar_widget.tooltip = enc_time
-    #     # self.log_feedback(cursor)
 
     def on_input_submitted(self, event: Input.Submitted):
         try:
@@ -471,7 +466,6 @@ class Calendar(Screen):
                     self.patient_widget.move_cursor(row=row_index)
                     self.show_encounters()
 
-
             except Exception as e:
                 self.log_error(e)
 
@@ -480,19 +474,23 @@ class Calendar(Screen):
         for input in self.query(Input):
             input.value = ''
 
+
     def on_button_pressed(self, event: Button.Pressed):
-        
         try:
+            cursor = self.patient_widget.cursor_coordinate
             patient_id = self.patient_widget.get_cell_at(Coordinate(cursor.row, 0))
         except Exception as e:
-            self.log_error(e)
+            self.log_error("Error occurred while fetching patient ID: " + str(e))
+            return
 
-        cursor = self.patient_widget.cursor_coordinate
-        # patient_id = self.patient_widget.get_cell_at(Coordinate(cursor.row, 0))
-        first_name = self.query_one('#fname').value.capitalize()
-        last_name = self.query_one('#lname').value.capitalize()
-        phone = self.query_one('#phone').value
-        date_of_birth = self.query_one('#dob').value
+        try:
+            first_name = self.query_one('#fname').value.capitalize()
+            last_name = self.query_one('#lname').value.capitalize()
+            phone = self.query_one('#phone').value
+            date_of_birth = self.query_one('#dob').value
+        except Exception as e:
+            self.log_error("Error occurred while fetching input values: " + str(e))
+            return
 
         # Validate the input values
         if not first_name or not last_name or not phone or not date_of_birth:
@@ -502,33 +500,46 @@ class Calendar(Screen):
         try:
             parsed_dob = parser.parse(date_of_birth).date()
         except ValueError:
-            self.log_error("Invalid date format.")
+            self.log_error("Invalid date format. Please use YYYY-MM-DD format.")
             return
+
         try:
             parsed_phone = int(phone)
         except ValueError:
-            self.log_error("Invalid phone number.")
+            self.log_error("Invalid phone number. Please enter a valid integer.")
             return
 
         # Check for patient duplication
-        existing_patient = conf.select_patient_by_details(first_name, last_name, parsed_phone, parsed_dob)
-        if existing_patient:
-            self.log_error("Patient with the same details already exists.")
+        try:
+            existing_patient = conf.select_patient_by_details(first_name, last_name, parsed_phone, parsed_dob)
+            if existing_patient:
+                self.log_error("Patient with the same details already exists.")
+                return
+        except Exception as e:
+            self.log_error("Error occurred while checking for existing patient: " + str(e))
             return
-        
-        if event.control.id == 'addpatient':
-            self.add_patient(first_name, last_name, parsed_phone, parsed_dob)
-        if event.control.id == 'updatepatient':
-            self.update_patient(patient_id, first_name, last_name, parsed_phone, parsed_dob)
+
+        try:
+            if event.control.id == 'addpatient':
+                self.add_patient(first_name, last_name, parsed_phone, parsed_dob)
+            elif event.control.id == 'updatepatient':
+                self.update_patient(patient_id, first_name, last_name, parsed_phone, parsed_dob)
+            else:
+                self.log_error("Invalid button event.")
+                return
+        except Exception as e:
+            self.log_error("Error occurred while performing patient action: " + str(e))
+            return
 
 
     def action_delete_encounter(self):
-        cursor = self.calendar_widget.cursor_coordinate
-        patient_name = self.calendar_widget.get_cell_at(cursor)
-        if '_' in patient_name:
-            self.log_error('No encounter to delete!')
-            return
         try:
+            cursor = self.calendar_widget.cursor_coordinate
+            patient_name = self.calendar_widget.get_cell_at(cursor)
+            if '_' in patient_name:
+                self.log_error('No encounter to delete!')
+                return
+            
             encounter_time = self.get_datetime_from_cell(self.week_index, cursor.row, cursor.column)
             encounter_id = conf.select_encounter_by_rdv(encounter_time).encounter_id
             conf.delete_encounter(encounter_id)
@@ -536,8 +547,7 @@ class Calendar(Screen):
             self.encounter_widget.clear()
             self.log_feedback('Encounter deleted successfully.')
         except Exception as e:
-            self.log_error(e)
-            return
+            self.log_error("Error occurred on delete_encounter: " + str(e))
 
 
     def action_add_encounter(self):
@@ -567,38 +577,43 @@ class Calendar(Screen):
 
 
     def get_datetime_from_cell(self,week_index, row, column):
-        today = date.today()
-        days_to_saturday = (today.weekday() - 5) % 7
-        start_date = today - timedelta(days=days_to_saturday) + timedelta(weeks=week_index)
+        try:
+            today = date.today()
+            days_to_saturday = (today.weekday() - 5) % 7
+            start_date = today - timedelta(days=days_to_saturday) + timedelta(weeks=week_index)
+            day = start_date + timedelta(days=column - 1)
+            time_slot_start, _ = conf.generate_time_slot(9, 0, 20, 21)[row]
+            return dt.datetime.combine(day, time_slot_start)
         
-        day = start_date + timedelta(days=column - 1)
-        time_slot_start, _ = conf.generate_time_slot(9, 0, 20, 21)[row]
-        
-        return dt.datetime.combine(day, time_slot_start)
+        except Exception as e:
+            self.log_error(f"Error in get_datetime_from_cell: {e}")
 
 
     def action_modify_patient(self):
-        cursor = self.patient_widget.cursor_coordinate
-        # patient_id = self.patient_widget.get_cell_at(Coordinate(cursor.row, 0))
-        inputs = ['fname', 'lname', 'dob', 'phone']
-        self.query_one('#fname').focus()
+        try:
+            cursor = self.patient_widget.cursor_coordinate
+            # patient_id = self.patient_widget.get_cell_at(Coordinate(cursor.row, 0))
+            inputs = ['fname', 'lname', 'dob', 'phone']
+            self.query_one('#fname').focus()
 
-        if self.modify_pt == False:
+            if self.modify_pt == False:
 
-            for i, inp in enumerate(inputs):
-                self.query_one(f'#{inp}').value = self.patient_widget.get_cell_at(Coordinate(cursor.row, i+1))
-                self.query_one(f'#{inp}').styles.background = 'teal'
-                if i==4:
-                    self.query_one(f'#{inp}').value = int(self.patient_widget.get_cell_at(Coordinate(cursor.row, i+1)))
-            self.modify_pt = True
-            pass
+                for i, inp in enumerate(inputs):
+                    self.query_one(f'#{inp}').value = self.patient_widget.get_cell_at(Coordinate(cursor.row, i+1))
+                    self.query_one(f'#{inp}').styles.background = 'teal'
+                    if i==4:
+                        self.query_one(f'#{inp}').value = int(self.patient_widget.get_cell_at(Coordinate(cursor.row, i+1)))
+                self.modify_pt = True
+                pass
 
-        else :
-            for i, inp in enumerate(inputs):
-                self.query_one(f'#{inp}').value = ''
-                self.query_one(f'#{inp}').styles.background = self.styles.background
-            self.modify_pt = False
-            pass
+            else :
+                for i, inp in enumerate(inputs):
+                    self.query_one(f'#{inp}').value = ''
+                    self.query_one(f'#{inp}').styles.background = self.styles.background
+                self.modify_pt = False
+        except Exception as e:
+            self.log_error(f"Error in modify_patient: {e}")
+            
 
 
     def add_patient(self, first_name, last_name, phone, date_of_birth):
@@ -638,7 +653,7 @@ class Calendar(Screen):
 
 
         except Exception as e:
-            self.log_error(f"Error adding patient: {e}")
+            self.log_error(f"Error updating patient: {e}")
 
 
     def log_error(self, msg):
@@ -659,52 +674,63 @@ class Calendar(Screen):
 
 
     def show_patients(self):
-        self.patient_widget.clear()
-        patients = iter(conf.select_all_starts_with())
-        self.row_index_id = {}
-        for index, patient in enumerate(patients):
-            patient_id = patient[0]
-            self.patient_widget.add_row(*patient, key=patient_id)
-            self.row_index_id.update({patient_id : index})
-            # self.log_feedback()
+        try:
+            self.patient_widget.clear()
+            patients = iter(conf.select_all_starts_with())
+            self.row_index_id = {}
+            for index, patient in enumerate(patients):
+                patient_id = patient[0]
+                self.patient_widget.add_row(*patient, key=patient_id)
+                self.row_index_id.update({patient_id: index})
+                # self.log_feedback()
+        except Exception as e:
+            self.log_error("Error occurred in show_patients: " + str(e))
+
 
     def show_encounters(self):
         try:
+            if self.patient_widget.row_count == 0:
+                return
+
             self.encounter_widget.clear()
             pt_id = int(self.patient_widget.get_row_at(self.patient_widget.cursor_row)[0])
             # self.log_feedback(pt_id)
             encounters = iter(conf.select_all_pt_encounters(pt_id))
             for index, row in enumerate(encounters):
                 encounter_id = row[0]
-                self.encounter_widget.add_row(*row, height=int(len(row[2])/20+1))
-                self.row_index_enc_id.update({encounter_id : index})
+                self.encounter_widget.add_row(*row, height=int(len(row[2]) / 20 + 1))
+                self.row_index_enc_id.update({encounter_id: index})
         except Exception as e:
-            self.log_error(e)
+            self.log_error("Error occurred in show_encounters: " + str(e))
 
 
     def show_calendar(self, week_index):
-        current_row = self.calendar_widget.cursor_row
-        current_column = self.calendar_widget.cursor_column
+        try:
+            current_row = self.calendar_widget.cursor_row
+            current_column = self.calendar_widget.cursor_column
 
-        self.calendar_widget.clear(columns=True)
-        schedule = iter(conf.generate_schedule(week_index))
-        table = self.query_one('#cal_table')
+            self.calendar_widget.clear(columns=True)
+            schedule = iter(conf.generate_schedule(week_index))
+            table = self.query_one('#cal_table')
 
-        # Retrieve the column names from the schedule iterator
-        column_names = next(schedule)
+            # Retrieve the column names from the schedule iterator
+            column_names = next(schedule)
 
-        # Iterate over the column names and add them to the table
-        for i, column_name in enumerate(column_names):
-            if i == 0:
-                table.add_column(column_name, width=5)
-            else:
-                table.add_column(column_name, width=18)
+            # Iterate over the column names and add them to the table
+            for i, column_name in enumerate(column_names):
+                if i == 0:
+                    table.add_column(column_name, width=5)
+                else:
+                    table.add_column(column_name, width=18)
 
-        for row in schedule:
-            table.add_row(*row, height=2)
+            for row in schedule:
+                table.add_row(*row, height=2)
 
-        self.calendar_widget.move_cursor(row=current_row, column=current_column, animate=True)
-        self.selected_calendar()
+            self.calendar_widget.move_cursor(row=current_row, column=current_column, animate=True)
+            self.selected_calendar()
+        except Exception as e:
+            self.log_error("Error occurred in show_calendar: " + str(e))
+
 
 
     def on_data_table_cell_selected(self, message: DataTable.CellSelected):
@@ -726,14 +752,14 @@ class Calendar(Screen):
 
         
     def selected_calendar(self):
-        cursor = self.calendar_widget.cursor_coordinate
-        cursor_value = self.calendar_widget.get_cell_at(cursor)
-        if '_' in cursor_value or ':' in cursor_value:
-        #     # self.show_patients()
-        #     # self.encounter_widget.clear()
-            return
-        
         try:
+            cursor = self.calendar_widget.cursor_coordinate
+            cursor_value = self.calendar_widget.get_cell_at(cursor)
+            if '_' in cursor_value or ':' in cursor_value:
+            #     # self.show_patients()
+            #     # self.encounter_widget.clear()
+                return
+        
             # start = tm.time()
             encounter_time = self.get_datetime_from_cell(self.week_index, cursor.row, cursor.column)
             encounter = conf.select_encounter_by_rdv(encounter_time)
