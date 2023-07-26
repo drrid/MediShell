@@ -28,9 +28,6 @@ import openpyxl
 load_dotenv()
 passkey = os.getenv('PASSKEY')
 host = os.getenv('HOST')
-# nc_client = os.getenv('NC_CLIENT')
-# nc_user = os.getenv('NC_USER')
-# nc_pass = os.getenv('NC_PASS')
 special_account = os.getenv('SPECIAL_ACCOUNT')
 ubuntu_pass = os.getenv('UBUNTU_PASS')
 
@@ -251,8 +248,9 @@ class PrintExportScreen(ModalScreen):
 
         if len(self.worker) == len(self.split_selected_files):
                 self.log_feedback('finished all')
+                self.cleanup()
         
-    
+
     def on_button_pressed(self, event: Button.Pressed):
         try:
             self.worker = []
@@ -322,8 +320,25 @@ class PrintExportScreen(ModalScreen):
                         progress = round(float(pr.group()[0:-1]))
                         self.app.call_from_thread(self.update_progress ,progress)
             client.close()
-            # self.app.call_from_thread(self.log_feedback ,self.app.workers)
-            # self.log_feedback(self.app.workers)
+        except Exception as e:
+            self.log_error(str(e))
+
+
+    @work(exclusive=False)
+    def cleanup(self):
+        try:
+            client = self.connect_to_server()
+            calendar_screen: Calendar = self.app.SCREENS.get('calendar')
+            patient = calendar_screen.patient_widget.get_row_at(calendar_screen.patient_widget.cursor_coordinate.row)
+            command = f"cd '/home/tarek/zfsmedia2/patients/{patient[0]} {patient[1]} {patient[2]}/' && rm *.sl1"
+
+            stdin, stdout, stderr = client.exec_command(command, get_pty=True)
+            self.query_one('#textlog').write(f'[bold teal]executing {command}')
+            for line in iter(stdout.readline, ""):
+                match = re.finditer(r'\d+(\.\d+)?%', line)
+                self.app.call_from_thread(self.query_one('#textlog').write ,line)
+
+            client.close()
         except Exception as e:
             self.log_error(str(e))
 
