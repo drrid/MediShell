@@ -175,6 +175,7 @@ class PrintExportScreen(ModalScreen):
 
     nb_aligners = []
     worker = []
+    split_selected_files = []
     
     def compose(self):
         self.selectionlist = SelectionList[int]()
@@ -241,18 +242,21 @@ class PrintExportScreen(ModalScreen):
     def on_radio_set_changed(self, event: RadioSet.Changed):
         self.show_selectionlist()
 
-    # def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
-    #     """Called when the worker state changes."""
-    #     if event.state.name == 'SUCCESS':
-    #         self.worker.append(event.worker)
-    #     if len(self.worker) == len(self.app.workers):
-    #         self.query_one('#textlog').write(f'[green]------------------DONE-----------------------------------------------')
-    #         self.worker = []
+
+    def on_worker_state_changed(self, event: Worker.StateChanged):
+        self.log_feedback('Running')
+        for worker in self.workers:
+            if worker.is_finished:
+                self.worker.append(worker)
+
+        if len(self.worker) == len(self.split_selected_files):
+                self.log_feedback('finished all')
         
     
     def on_button_pressed(self, event: Button.Pressed):
         try:
             self.worker = []
+            self.split_selected_files = []
             selected_radio = self.query_one('#exports').pressed_button.id
             if selected_radio == 'models':
                 calendar_screen: Calendar = self.app.SCREENS.get('calendar')
@@ -265,6 +269,7 @@ class PrintExportScreen(ModalScreen):
 
                 split_selected_files = [selected_files[i:i + 10] for i in range(0, len(selected_files), 10)]  
                 timestamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+                self.split_selected_files = split_selected_files
 
                 if event.button.id == "export":
                 
@@ -279,7 +284,6 @@ class PrintExportScreen(ModalScreen):
                         command = f"{prusa_cmd} {pt_name} '{chunck_joined}' && {uvtools_cmd} {pt_name} pm3"
                         self.slice(client=client, command=command)
 
-                    
                 elif event.button.id == "print":
                     self.print_pt(patient, len(selected_files)/2, self.get_onyxceph_link(patient))
 
@@ -318,6 +322,8 @@ class PrintExportScreen(ModalScreen):
                         progress = round(float(pr.group()[0:-1]))
                         self.app.call_from_thread(self.update_progress ,progress)
             client.close()
+            # self.app.call_from_thread(self.log_feedback ,self.app.workers)
+            # self.log_feedback(self.app.workers)
         except Exception as e:
             self.log_error(str(e))
 
