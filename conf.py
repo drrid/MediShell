@@ -3,13 +3,15 @@ from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from dotenv import load_dotenv
 import os
 from datetime import date, time, timedelta, datetime
-import openpyxl
+#import openpyxl
 import time as tm
-
 
 load_dotenv()
 password = os.getenv('DB_PASSWORD')
 uri = os.getenv('URI')
+nc_user = os.getenv('NC_USER')
+nc_pass = os.getenv('NC_PASS')
+nc_link = os.getenv('NC_LINK')
 
 engine = create_engine(f'mysql+pymysql://root:{password}@{uri}', pool_recycle=3600)
 
@@ -40,7 +42,10 @@ class Encounter(Base):
     treatment_cost = Column(Integer(), default=0)
     patient = relationship("Patient", back_populates="encounters")
     prescription_files = relationship("PrescriptionFile", order_by=PrescriptionFile.id, back_populates="encounter")
+    synced_to_calendar = Column(Boolean, default=False)
 
+    def unsync_to_calendar(self):
+        self.synced_to_calendar = False
 
     def __repr__(self):
         return f'{self.encounter_id},{self.rdv},{self.note},{self.payment},{self.treatment_cost}'
@@ -59,7 +64,6 @@ class Patient(Base):
     def __repr__(self):
         return f'{self.patient_id},{self.first_name},{self.last_name},{self.date_of_birth},{self.phone}'
 #---------------------------------------------------------------------------------------------------------------------------
-
 
 
 def init_db():
@@ -118,7 +122,8 @@ def save_to_db(record):
             session.add(record)
             session.commit()
             generated_id = record.patient_id
-            return generated_id
+            enc_id = record.encounter_id
+            return generated_id, enc_id
         except Exception as e:
             session.rollback()
             print(e)
@@ -293,11 +298,5 @@ def generate_schedule(week_index):
 init_db()
 
 
-# print(iter(select_all_starts_with()))
 
-# start = tm.time()
-
-
-# print(generate_schedule(0))
-# print(tm.time()-start)
 

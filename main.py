@@ -664,7 +664,8 @@ class Calendar(Screen):
             patient_last_name = self.patient_widget.get_cell_at(Coordinate(self.patient_widget.cursor_coordinate.row, 2))
 
             selected_datetime = self.get_datetime_from_cell(self.week_index, cursor.row, cursor.column)
-            conf.save_to_db(conf.Encounter(patient_id=patient_id, rdv=selected_datetime))
+            _, enc_id = conf.save_to_db(conf.Encounter(patient_id=patient_id, rdv=selected_datetime))
+            # conf.save_encounter_to_calendar(enc_id, selected_datetime, f'{patient_first_name} {patient_last_name}', 'collage')
 
             self.calendar_widget.update_cell_at(cursor, f'{patient_first_name} {patient_last_name}')
             self.encounter_widget.clear()
