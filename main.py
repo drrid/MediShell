@@ -664,8 +664,7 @@ class Calendar(Screen):
             patient_last_name = self.patient_widget.get_cell_at(Coordinate(self.patient_widget.cursor_coordinate.row, 2))
 
             selected_datetime = self.get_datetime_from_cell(self.week_index, cursor.row, cursor.column)
-            _, enc_id = conf.save_to_db(conf.Encounter(patient_id=patient_id, rdv=selected_datetime))
-            # conf.save_encounter_to_calendar(enc_id, selected_datetime, f'{patient_first_name} {patient_last_name}', 'collage')
+            conf.save_to_db(conf.Encounter(patient_id=patient_id, rdv=selected_datetime))
 
             self.calendar_widget.update_cell_at(cursor, f'{patient_first_name} {patient_last_name}')
             self.encounter_widget.clear()
@@ -719,22 +718,23 @@ class Calendar(Screen):
 
 
     def add_patient(self, first_name, last_name, phone, date_of_birth):
-        try:
-            patient = conf.Patient(first_name=first_name, last_name=last_name, phone=phone, date_of_birth=date_of_birth)
-            patient_id = conf.save_to_db(patient)
-            self.log_feedback("Patient added successfully.")
-            self.show_patients()
-            self.calendar_widget.move_cursor(row=0, column=0)
-            row_index = self.row_index_id.get(str(patient_id))
-            self.patient_widget.move_cursor(row=row_index)
-            foldername = f"Z:\\patients\\{patient_id} {patient.first_name} {patient.last_name}"
-            isExist = os.path.exists(f'Z:\\patients\\{foldername}')
-            self.show_encounters()
-            if not isExist:
-                os.makedirs(foldername)
+        if self.modify_pt == False:
+            try:
+                patient = conf.Patient(first_name=first_name, last_name=last_name, phone=phone, date_of_birth=date_of_birth)
+                patient_id = conf.save_to_db(patient)
+                self.log_feedback("Patient added successfully.")
+                self.show_patients()
+                self.calendar_widget.move_cursor(row=0, column=0)
+                row_index = self.row_index_id.get(str(patient_id))
+                self.patient_widget.move_cursor(row=row_index)
+                foldername = f"Z:\\patients\\{patient_id} {patient.first_name} {patient.last_name}"
+                isExist = os.path.exists(f'Z:\\patients\\{foldername}')
+                self.show_encounters()
+                if not isExist:
+                    os.makedirs(foldername)
 
-        except Exception as e:
-            self.log_error(f"Error adding patient: {e}")
+            except Exception as e:
+                self.log_error(f"Error adding patient: {e}")
 
 
     def update_patient(self, patient_id, first_name, last_name, phone, date_of_birth):
@@ -749,10 +749,11 @@ class Calendar(Screen):
 
             old_foldername = f"Z:\\patients\\{patient_id} {old_patient.first_name} {old_patient.last_name}"
             new_foldername = f"Z:\\patients\\{patient_id} {first_name} {last_name}"
-            isExist = os.path.exists(f'Z:\\patients\\{new_foldername}')
-            if not isExist:
+            isExist = os.path.exists(f'Z:\\patients\\{old_foldername}')
+            if isExist:
                 os.rename(old_foldername, new_foldername)
-
+            else:
+                os.makedirs(new_foldername)
 
         except Exception as e:
             self.log_error(f"Error updating patient: {e}")
