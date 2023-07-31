@@ -1,6 +1,6 @@
 from textual.app import App
 from textual.screen import Screen, ModalScreen
-from textual.widgets import Static, Footer, Header, Input, DataTable, Button, RadioButton, RadioSet, Checkbox, SelectionList, TextLog, ProgressBar
+from textual.widgets import Static, Footer, Header, Input, DataTable, Button, RadioButton, RadioSet, SelectionList, TextLog, ProgressBar
 from textual.coordinate import Coordinate
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll, Grid
 from textual.reactive import reactive
@@ -18,6 +18,11 @@ import paramiko
 from dotenv import load_dotenv
 from textual.worker import Worker, get_current_worker
 import time as tm
+
+if platform == 'win32':
+    import ctypes
+
+
 
 from datetime import date, timedelta
 
@@ -356,6 +361,7 @@ class Calendar(Screen):
     row_index_enc_id = {}
     modify_pt = False
 
+
     def compose(self):
         self.table = DataTable()
         self.calendar_widget = DataTable(id='cal_table', fixed_columns=1, zebra_stripes=True)
@@ -393,6 +399,11 @@ class Calendar(Screen):
             self.show_patients()
 
     def on_mount(self):
+        if platform == 'win32':
+            user32 = ctypes.windll.user32
+            screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+            # self.log_feedback(screensize)
+
         asyncio.create_task(self.update_calendar_periodically())
 
         PT_CLMN = [['ID', 3], ['First Name', 13], ['Last Name', 13], ['Date of Birth', 12], ['Phone', 10], ['Owed', 10]]
