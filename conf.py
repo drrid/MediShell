@@ -317,6 +317,8 @@ def generate_prescription_png(patient, selection):
         template_path = f"templates/{selection}.png"
         dob = datetime.strptime(patient[3], "%Y-%m-%d").date()
         age = calculate_age(dob)
+        today = date.today()
+        formatted_date = today.strftime("%d-%m-%Y")
 
         template_image = Image.open(template_path)
 
@@ -327,12 +329,13 @@ def generate_prescription_png(patient, selection):
         output_image.paste(template_image, (0, 0))
 
         # Set font and size for patient name and age
-        font = ImageFont.truetype("arial.ttf", 50)
+        font = ImageFont.truetype("arial.ttf", 40)
         draw = ImageDraw.Draw(output_image)
 
         # Add patient name and age to the image
-        draw.text((394, 470), f"{patient[0]}", font=font, fill=(0, 0, 0, 255))
-        draw.text((1180, 470), f"{age}", font=font, fill=(0, 0, 0, 255))
+        draw.text((394, 480), f"{patient[1]} {patient[2]}", font=font, fill=(0, 0, 0, 255))
+        draw.text((1180, 480), f"{age}", font=font, fill=(0, 0, 0, 255))
+        draw.text((1180, 540), f"{formatted_date}", font=font, fill=(0, 0, 0, 255))
 
         # Save the output image as PNG
         output_image.save(output_filename)
