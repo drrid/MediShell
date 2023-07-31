@@ -13,8 +13,6 @@ import os
 from natsort import natsorted 
 import re
 from sys import platform
-if platform == 'win32':
-    import win32com.client
 
 import paramiko
 from dotenv import load_dotenv
@@ -22,11 +20,9 @@ from textual.worker import Worker, get_current_worker
 import time as tm
 
 from datetime import date, timedelta
-import openpyxl
 
 import shutil
 import subprocess
-from pathlib import Path
 
 
 load_dotenv()
@@ -34,141 +30,6 @@ passkey = os.getenv('PASSKEY')
 host = os.getenv('HOST')
 special_account = os.getenv('SPECIAL_ACCOUNT')
 ubuntu_pass = os.getenv('UBUNTU_PASS')
-
-medicaments = [
-    ('LEXIN 1 g (CP) - 1cp * 2/J', 'lexin'),('BIOROGYL(CP)', 'biorogyl'),('ROVAMYCINE 3M(CP)', 'rovamycine_3m'),
-    ('ROVAMYCINE 1.5M(CP)', 'rovamycine_1.5m'),('ROVAMYCINE (SP)', 'rovamycine_sp'),('CLAMOXYL 1 g (CP)', 'clamoxyl_1g'),
-    ('CLAMOXYL 500 mg (SIROP) - 1 cuillère * 2/j', 'clamoxyl_500mg_sirop'),('CLAMOXYL 500 mg (INJ)', 'clamoxyl_500mg_inj'),('CLAMOXYL 1 g (INJ)', 'clamoxyl_1g_inj'),
-    ('FLAGYL 500 mg (CP)', 'flagyl_500mg'),('FLAGYL 250 mg (CP)', 'flagyl_250mg'),('FLAGYL 125 mg (SP)', 'flagyl_125mg'),
-    ('SOLUPRED 20 mg (CP)', 'solupred_20mg'),('DOLIPRANE 1 g (CP)', 'doliprane_1g'),('LOMAC 20mg (gle)', 'lomac_20mg'),
-    ('SOLUMEDROL 40 mg (INJ) - 1inj*1/j LE MATIN', 'solumedrol_40mg_inj'),('MAXTRIT BDB - 01 BTE - 1BDB * 2/J', 'maxtrit_bdb'),('NOPAIN DS (CP)', 'nopain_ds'),
-    ('RAPIDUS 50 mg (CP)', 'rapidus_50mg'),('SAPOFEN 600 mg(CP)', 'sapofen_600mg'),('SAPOFEN 400 mg(CP)', 'sapofen_400mg'),
-    ('SAPOFEN 200 mg(CP)', 'sapofen_200mg'),('ALGIFEN (SP) 1DDP *2/J', 'algifen'),('CODOLIPRANE 1 g (CP)', 'codoliprane_1g'),
-    ('NEUROVIT (CP)', 'neurovit'),('VIT C (CP)', 'vit_c'),('AUGMENTIN 1 g (SH)', 'augmentin_1g_sh'),
-    ('AUGMENTIN 500 mg (SH)', 'augmentin_500mg_sh'),('AUGMENTIN 100 mg (SP)', 'augmentin_100mg_sp'),('CLOFENAL 100 mg (SUPP)', 'clofenal_100mg_supp'),
-    ('CLOFENAL 25 mg (SUPP)', 'clofenal_25mg_supp'),('DOLIPRANE 300 mg (SH)', 'doliprane_300mg_sh'),('DOLIPRANE 300 mg (SUPP)', 'doliprane_300mg_supp')
-]
-
-# Export Screen --------------------------------------------------------------------------------------------------------------------------------------------------
-class ExportScreen(ModalScreen):
-
-    def compose(self):
-        with Grid(id='dialog'):
-            with Horizontal(id='selection'):
-                with Vertical(id='right_cnt'):
-                    with RadioSet(id='exports'):
-                        yield RadioButton('Ordonnance', id='export_menu', value=True)
-                        yield RadioButton('Pano', id='pano')
-                        yield RadioButton('TLR', id='tlr')
-                        yield RadioButton('Pano+TLR', id='pano_tlr')
-                        yield RadioButton('Certificat', id='certificat')
-                        yield RadioButton('Arret 3 jours', id='arret_3jr')
-                    yield(Static(id='feedback_popup'))
-                with VerticalScroll(id='medicament'):
-                    for med_name, med_id in medicaments:
-                        yield Checkbox(med_name, id=med_id)
-
-            with Horizontal(id='buttons'):
-                yield Button('export', id='export', variant='primary')
-                yield Button('print', id='print', variant='primary')
-                yield Button('exit', id='exit', variant='error')
-
-    def get_checked_checkboxes(self):
-        checked_checkboxes = []
-        for checkbox in self.query(Checkbox):
-            if checkbox.value:
-                checked_checkboxes.append(str(checkbox.label))
-        return checked_checkboxes
-    
-    def get_checked_radiobutton(self):
-        for radiobutton in self.query(RadioButton):
-            if radiobutton.value:   
-                return str(radiobutton.label)
-            
-    def save_document(self, patient_id, encounter_id, file, prescription=None):
-        root = os.path.dirname(os.path.abspath(__file__))
-        workbook = openpyxl.load_workbook(f'{root}/templates/{file}.xlsx')
-        worksheet = workbook['Sheet1']
-        name_cell = worksheet['K8']
-        date_cell = worksheet['O8']
-
-        today = dt.date.today()
-        formatted_date = today.strftime('%d-%m-%Y')
-        patient = conf.select_patient_by_id(patient_id)
-
-        name_cell.value = f'{patient.first_name} {patient.last_name}'
-        date_cell.value = formatted_date
-
-        if prescription:
-            pres_cell = worksheet['K13']
-            pres_cell.value = '\n'.join(prescription)
-
-        document_type = file
-        path = conf.save_prescription_file(patient_id, patient.first_name, patient.last_name, encounter_id, document_type, workbook)
-        self.log_feedback('Document generated successfully.')
-        return path
-
-    def get_selected_data(self):
-        calendar_screen = self.app.SCREENS.get('calendar')
-        cursor = calendar_screen.calendar_widget.cursor_coordinate
-        encounter_time = calendar_screen.get_datetime_from_cell(calendar_screen.week_index, cursor.row, cursor.column)
-        encounter = conf.select_encounter_by_rdv(encounter_time)
-        return encounter.patient_id, encounter.encounter_id
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id in ["export", "print"]:
-            selected_radiobutton = self.get_checked_radiobutton()
-            try:
-                patient_id, encounter_id = self.get_selected_data()
-            except Exception as e:
-                self.log_error(f'Please select an encounter!{e}')
-                return
-
-            if selected_radiobutton == 'Ordonnance':
-                selected_checkboxes = self.get_checked_checkboxes()
-                if len(selected_checkboxes) != 0:
-                    try:
-                        path = self.save_document(patient_id, encounter_id, selected_radiobutton, selected_checkboxes)
-                    except Exception as e:
-                        self.log_error(e)
-                        return
-                else:
-                    self.log_error('Please choose a prescription!')
-                    return
-
-            elif selected_radiobutton in ['Arret 3 jours', 'Certificat', 'Pano', 'TLR', 'Pano+TLR']:
-                try:
-                    path = self.save_document(patient_id, encounter_id, selected_radiobutton)
-                except Exception as e:
-                    self.log_error(e)
-                    return
-
-            if event.button.id == 'print':
-                try:
-                    self.print_excel_file(path)
-                except Exception as e:
-                    self.log_error(e)
-
-        elif event.button.id == "exit":
-            self.app.pop_screen()
-
-
-    def print_excel_file(self, file_path):
-        excel = win32com.client.Dispatch("Excel.Application")
-        excel.Visible = False 
-        try:
-            workbook = excel.Workbooks.Open(file_path)
-            workbook.PrintOut()
-            workbook.Close(SaveChanges=0)
-        finally:
-            excel.Quit()
-
-    def log_feedback(self, msg):
-        self.query_one('#feedback_popup').update(f'[bold #11696b]{str(msg)}')
-        # self.query_one('#feedback_popup').update(f'[bold #11696b]{str(msg)}')
-
-    def log_error(self, msg):
-        self.query_one('#feedback_popup').update(f'[bold red]{str(msg)}')
 
 
 # Printing Export Screen --------------------------------------------------------------------------------------------------------------------------------------------------
