@@ -5,6 +5,7 @@ import os
 from datetime import date, time, timedelta, datetime
 #import openpyxl
 import time as tm
+from PIL import Image, ImageDraw, ImageFont
 
 load_dotenv()
 password = os.getenv('DB_PASSWORD')
@@ -92,46 +93,6 @@ def init_db():
     """Initialize the database by creating all tables."""
     Base.metadata.create_all(engine)
     Base.metadata.bind = engine
-
-
-# def get_patient_owed_money(patient_id):
-#     with Session() as session:
-#         try:
-#             # Get the total treatment cost for the patient
-#             total_treatment_cost = session.query(func.sum(Encounter.treatment_cost)).filter(
-#                 Encounter.patient_id == patient_id
-#             ).scalar() or 0
-
-#             # Get the total payments made by the patient
-#             total_payments = session.query(func.sum(Encounter.payment)).filter(
-#                 Encounter.patient_id == patient_id
-#             ).scalar() or 0
-
-#             # Calculate the owed money (all fees - all payments)
-#             owed_money = total_treatment_cost - total_payments
-#             return owed_money
-#         except Exception as e:
-#             print(f"Error getting patient owed money: {e}")
-#             return None
-
-
-def save_prescription_file(patient_id, first_name, last_name, encounter_id, prescription_type, workbook):
-    # current_script_directory = os.path.join(os.path.expanduser('~'), 'Desktop')
-    current_script_directory = os.path.dirname(os.path.abspath(__file__))
-    patient_directory = os.path.join(current_script_directory, 'prescriptions', f'{patient_id}_{first_name}_{last_name}')
-    
-    if not os.path.exists(patient_directory):
-        os.makedirs(patient_directory)
-
-    # Including encounter_id in the file name
-    file_name = f'{encounter_id}_{prescription_type}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
-    file_path = os.path.join(patient_directory, file_name)
-    workbook.save(file_path)
-
-    # Update the database with the file path
-    update_encounter(encounter_id, prescription_file_path=file_path)
-    return file_path
-
 
 def get_last_patient_encounter(patient_id):
     with Session() as session:
@@ -259,20 +220,6 @@ def select_patient_by_id(patient_id):
             print(f"Error selecting patient by details: {e}")
             return None
 
-# def calculate_owed_amount(patient_id):
-#     try:
-#         patient_encounters = select_all_pt_encounters(patient_id)
-#         total_treatment_cost = sum(encounter.treatment_cost for encounter in patient_encounters)
-#         total_payments = sum(encounter.payment for encounter in patient_encounters)
-
-#         owed_amount = total_treatment_cost - total_payments
-
-#         return owed_amount
-#     except Exception as e:
-#         print(e)
-#         return None
-
-
 def generate_time_slot(start_hour, start_minute, duration, count):
     time_slots = []
     current_time = time(hour=start_hour, minute=start_minute)
@@ -338,10 +285,48 @@ def generate_schedule(week_index):
     return schedule
 
 
+def calculate_age(dob):
+    today = date.today()
+    years = today.year - dob.year
+    months = today.month - dob.month
+
+    # Adjust for cases where the birthday hasn't occurred yet in the current month
+    if today.day < dob.day:
+        months -= 1
+
+    # Adjust for cases where the current month is earlier than the birth month
+    if today.month < dob.month:
+        years -= 1
+        months += 12
+
+    return f"{years} ans {months} mois"
+
+
+def generate_prescription_png(patient_name, patient_age):
+    output_filename = "prescription_output.png"
+
+    # Load the PNG template (replace 'prescription_template.png' with your actual template path)
+    template_path = "prescription_template.png"
+    template_image = Image.open(template_path)
+
+    # Create a new transparent image with the same size as the template
+    output_image = Image.new("RGBA", template_image.size, (0, 0, 0, 0))
+
+    # Paste the template on the new transparent image
+    output_image.paste(template_image, (0, 0))
+
+    # Set font and size for patient name and age
+    font = ImageFont.truetype("arial.ttf", 50)
+    draw = ImageDraw.Draw(output_image)
+
+    # Add patient name and age to the image
+    draw.text((394, 470), f"{patient_name}", font=font, fill=(0, 0, 0, 255))
+    draw.text((1180, 470), f"{patient_age}", font=font, fill=(0, 0, 0, 255))
+
+    # Save the output image as PNG
+    output_image.save(output_filename)
+
+
 init_db()
 
-
-
-
-pt = select_patient_by_id(5)
-print(pt)
+# generate_prescription_png('tarek', 'abdennebi')

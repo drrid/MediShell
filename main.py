@@ -311,6 +311,15 @@ class PrintExportScreen(ModalScreen):
 
                 elif event.button.id == "exit":
                     self.app.pop_screen()
+
+
+            elif selected_radio == 'prescription':
+                if event.button.id == "export":
+                    pass
+                elif event.button.id == "print":
+                    pass
+                elif event.button.id == "exit":
+                    self.app.pop_screen()
         
         except Exception as e:
             self.log_error(str(e))
