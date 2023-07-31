@@ -5,6 +5,7 @@ import os
 from datetime import date, time, timedelta, datetime
 #import openpyxl
 import time as tm
+from sys import platform
 from PIL import Image, ImageDraw, ImageFont
 
 load_dotenv()
@@ -302,35 +303,44 @@ def calculate_age(dob):
     return f"{years} ans {months} mois"
 
 
-def generate_prescription_png(patient_id, selection):
+def generate_prescription_png(patient, selection):
+    try:
+        if platform == 'darwin':
+            pt_dir = f'/Volumes/mediaserver/patients/{patient[0]} {patient[1]} {patient[2]}'
+        else:
+            pt_dir = f'Z:\\patients\\{patient[0]} {patient[1]} {patient[2]}'
 
-    output_filename = f"{patient_id}-{selection}.png"
+        output_filename = os.path.join(pt_dir, f"{selection}.png")
 
-    # Load the PNG template (replace 'prescription_template.png' with your actual template path)
+        # Load the PNG template (replace 'prescription_template.png' with your actual template path)
 
-    template_path = f"templates/{selection}.png"
+        template_path = f"templates/{selection}.png"
+        dob = datetime.strptime(patient[3], "%Y-%m-%d").date()
+        age = calculate_age(dob)
 
+        template_image = Image.open(template_path)
 
-    template_image = Image.open(template_path)
+        # Create a new transparent image with the same size as the template
+        output_image = Image.new("RGBA", template_image.size, (0, 0, 0, 0))
 
-    # Create a new transparent image with the same size as the template
-    output_image = Image.new("RGBA", template_image.size, (0, 0, 0, 0))
+        # Paste the template on the new transparent image
+        output_image.paste(template_image, (0, 0))
 
-    # Paste the template on the new transparent image
-    output_image.paste(template_image, (0, 0))
+        # Set font and size for patient name and age
+        font = ImageFont.truetype("arial.ttf", 50)
+        draw = ImageDraw.Draw(output_image)
 
-    # Set font and size for patient name and age
-    font = ImageFont.truetype("arial.ttf", 50)
-    draw = ImageDraw.Draw(output_image)
+        # Add patient name and age to the image
+        draw.text((394, 470), f"{patient[0]}", font=font, fill=(0, 0, 0, 255))
+        draw.text((1180, 470), f"{age}", font=font, fill=(0, 0, 0, 255))
 
-    # Add patient name and age to the image
-    draw.text((394, 470), f"{patient_id}", font=font, fill=(0, 0, 0, 255))
-    draw.text((1180, 470), f"{patient_id}", font=font, fill=(0, 0, 0, 255))
-
-    # Save the output image as PNG
-    output_image.save(output_filename)
+        # Save the output image as PNG
+        output_image.save(output_filename)
+    except Exception as e:
+        print(e)
+        return e
 
 
 init_db()
 
-# generate_prescription_png('tarek', 'abdennebi')
+# generate_prescription_png(5, 'pano')

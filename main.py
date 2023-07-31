@@ -320,7 +320,9 @@ class PrintExportScreen(ModalScreen):
 
                 if event.button.id == "export":
                     for selection in self.selectionlist.selected:
-                        conf.generate_prescription_png(patient[0], selection)
+                        result = conf.generate_prescription_png(patient, selection)
+                        if result:
+                            self.log_error(result)
                 elif event.button.id == "print":
                     pass
                 elif event.button.id == "exit":
