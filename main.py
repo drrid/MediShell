@@ -234,6 +234,7 @@ class PrintExportScreen(ModalScreen):
 
             elif selected_radio == 'prescription':
                 self.selectionlist.add_option(('Pano', 'pano'))
+                self.selectionlist.add_option(('Teleradiographie', 'tlr'))
                 self.selectionlist.add_option(('Pano + Teleradiographie', 'pano_tlr'))
                 self.selectionlist.add_option(('Certificat', 'certificat'))
                 self.selectionlist.add_option(('Empty', 'empty'))
@@ -314,8 +315,12 @@ class PrintExportScreen(ModalScreen):
 
 
             elif selected_radio == 'prescription':
+                calendar_screen: Calendar = self.app.SCREENS.get('calendar')
+                patient = calendar_screen.patient_widget.get_row_at(calendar_screen.patient_widget.cursor_coordinate.row)
+
                 if event.button.id == "export":
-                    pass
+                    for selection in self.selectionlist.selected:
+                        conf.generate_prescription_png(patient[0], selection)
                 elif event.button.id == "print":
                     pass
                 elif event.button.id == "exit":

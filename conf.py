@@ -302,11 +302,15 @@ def calculate_age(dob):
     return f"{years} ans {months} mois"
 
 
-def generate_prescription_png(patient_name, patient_age):
-    output_filename = "prescription_output.png"
+def generate_prescription_png(patient_id, selection):
+
+    output_filename = f"{patient_id}-{selection}.png"
 
     # Load the PNG template (replace 'prescription_template.png' with your actual template path)
-    template_path = "prescription_template.png"
+
+    template_path = f"templates/{selection}.png"
+
+
     template_image = Image.open(template_path)
 
     # Create a new transparent image with the same size as the template
@@ -320,8 +324,8 @@ def generate_prescription_png(patient_name, patient_age):
     draw = ImageDraw.Draw(output_image)
 
     # Add patient name and age to the image
-    draw.text((394, 470), f"{patient_name}", font=font, fill=(0, 0, 0, 255))
-    draw.text((1180, 470), f"{patient_age}", font=font, fill=(0, 0, 0, 255))
+    draw.text((394, 470), f"{patient_id}", font=font, fill=(0, 0, 0, 255))
+    draw.text((1180, 470), f"{patient_id}", font=font, fill=(0, 0, 0, 255))
 
     # Save the output image as PNG
     output_image.save(output_filename)
