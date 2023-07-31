@@ -206,6 +206,7 @@ class PrintExportScreen(ModalScreen):
     def on_mount(self):
         self.show_selectionlist()
 
+
     def show_selectionlist(self):
         try:
             self.selectionlist.clear_options()
@@ -512,11 +513,12 @@ class Calendar(Screen):
         while True:
             await asyncio.sleep(10)  # Update every 10 seconds
             self.show_calendar(self.week_index)
+            self.show_patients()
 
     def on_mount(self):
         asyncio.create_task(self.update_calendar_periodically())
 
-        PT_CLMN = [['ID', 3], ['First Name', 13], ['Last Name', 13], ['Date of Birth', 12], ['Phone', 10]]
+        PT_CLMN = [['ID', 3], ['First Name', 13], ['Last Name', 13], ['Date of Birth', 12], ['Phone', 10], ['Owed', 10]]
         for c in PT_CLMN:
             self.patient_widget.add_column(f'{c[0]}', width=c[1])
 
@@ -542,9 +544,11 @@ class Calendar(Screen):
             if cursor.column == 3:
                 conf.update_encounter(encounter_id, payment=int(input_to_modify))
                 self.encounter_widget.update_cell_at(cursor, input_to_modify)
+                self.show_patients()
             if cursor.column == 4:
                 conf.update_encounter(encounter_id, treatment_cost=int(input_to_modify))
                 self.encounter_widget.update_cell_at(cursor, input_to_modify)
+                self.show_patients()
         except Exception as e:
             self.log_error(f"Error updating encounter: {e}")
 
@@ -778,6 +782,8 @@ class Calendar(Screen):
 
     def show_patients(self):
         try:
+            current_row = self.patient_widget.cursor_row
+            current_column = self.patient_widget.cursor_column
             self.patient_widget.clear()
             patients = iter(conf.select_all_starts_with())
             self.row_index_id = {}
@@ -786,6 +792,7 @@ class Calendar(Screen):
                 self.patient_widget.add_row(*patient, key=patient_id)
                 self.row_index_id.update({patient_id: index})
                 # self.log_feedback()
+            self.patient_widget.move_cursor(row=current_row, column=current_column)
         except Exception as e:
             self.log_error("Error occurred in show_patients: " + str(e))
 

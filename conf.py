@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date, Boolean, ForeignKey, and_
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Date, Boolean, ForeignKey, and_, func
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from dotenv import load_dotenv
 import os
@@ -61,8 +61,30 @@ class Patient(Base):
     date_of_birth = Column(Date())
     encounters = relationship("Encounter")
 
+    def get_owed_money(self):
+        with Session() as session:
+            try:
+                # Get the total treatment cost for the patient
+                total_treatment_cost = session.query(func.sum(Encounter.treatment_cost)).filter(
+                    Encounter.patient_id == self.patient_id
+                ).scalar() or 0
+
+                # Get the total payments made by the patient
+                total_payments = session.query(func.sum(Encounter.payment)).filter(
+                    Encounter.patient_id == self.patient_id
+                ).scalar() or 0
+
+                # Calculate the owed money (all fees - all payments)
+                owed_money = total_treatment_cost - total_payments
+                return owed_money
+            except Exception as e:
+                print(f"Error getting patient owed money: {e}")
+                return None
+
     def __repr__(self):
-        return f'{self.patient_id},{self.first_name},{self.last_name},{self.date_of_birth},{self.phone}'
+        owed_money = self.get_owed_money()
+        return f'{self.patient_id},{self.first_name},{self.last_name},{self.date_of_birth},{self.phone},{owed_money}'
+        # return f'{self.patient_id},{self.first_name},{self.last_name},{self.date_of_birth},{self.phone}'
 #---------------------------------------------------------------------------------------------------------------------------
 
 
@@ -70,6 +92,28 @@ def init_db():
     """Initialize the database by creating all tables."""
     Base.metadata.create_all(engine)
     Base.metadata.bind = engine
+
+
+# def get_patient_owed_money(patient_id):
+#     with Session() as session:
+#         try:
+#             # Get the total treatment cost for the patient
+#             total_treatment_cost = session.query(func.sum(Encounter.treatment_cost)).filter(
+#                 Encounter.patient_id == patient_id
+#             ).scalar() or 0
+
+#             # Get the total payments made by the patient
+#             total_payments = session.query(func.sum(Encounter.payment)).filter(
+#                 Encounter.patient_id == patient_id
+#             ).scalar() or 0
+
+#             # Calculate the owed money (all fees - all payments)
+#             owed_money = total_treatment_cost - total_payments
+#             return owed_money
+#         except Exception as e:
+#             print(f"Error getting patient owed money: {e}")
+#             return None
+
 
 def save_prescription_file(patient_id, first_name, last_name, encounter_id, prescription_type, workbook):
     # current_script_directory = os.path.join(os.path.expanduser('~'), 'Desktop')
@@ -152,7 +196,7 @@ def select_all_starts_with(**kwargs):
     with Session() as session:
         try:
             filters = [getattr(Patient, key).startswith(value) for key, value in kwargs.items()]
-            return [(str(r.patient_id), str(r.first_name), str(r.last_name), str(r.date_of_birth), str(r.phone)) for r in session.query(Patient).filter(*filters)]
+            return [(str(r.patient_id), str(r.first_name), str(r.last_name), str(r.date_of_birth), str(r.phone), str(r.get_owed_money())) for r in session.query(Patient).filter(*filters)]
         except Exception as e:
             print(e)
 
@@ -215,18 +259,18 @@ def select_patient_by_id(patient_id):
             print(f"Error selecting patient by details: {e}")
             return None
 
-def calculate_owed_amount(patient_id):
-    try:
-        patient_encounters = select_all_pt_encounters(patient_id)
-        total_treatment_cost = sum(encounter.treatment_cost for encounter in patient_encounters)
-        total_payments = sum(encounter.payment for encounter in patient_encounters)
+# def calculate_owed_amount(patient_id):
+#     try:
+#         patient_encounters = select_all_pt_encounters(patient_id)
+#         total_treatment_cost = sum(encounter.treatment_cost for encounter in patient_encounters)
+#         total_payments = sum(encounter.payment for encounter in patient_encounters)
 
-        owed_amount = total_treatment_cost - total_payments
+#         owed_amount = total_treatment_cost - total_payments
 
-        return owed_amount
-    except Exception as e:
-        print(e)
-        return None
+#         return owed_amount
+#     except Exception as e:
+#         print(e)
+#         return None
 
 
 def generate_time_slot(start_hour, start_minute, duration, count):
@@ -299,3 +343,5 @@ init_db()
 
 
 
+pt = select_patient_by_id(5)
+print(pt)
