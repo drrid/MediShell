@@ -182,13 +182,21 @@ class PrintExportScreen(ModalScreen):
                 calendar_screen: Calendar = self.app.SCREENS.get('calendar')
                 patient = calendar_screen.patient_widget.get_row_at(calendar_screen.patient_widget.cursor_coordinate.row)
 
-                if event.button.id == "export":
+                if event.button.id in ["export", "print"]:
                     for selection in self.selectionlist.selected:
                         result = conf.generate_prescription_png(patient, selection)
                         if result:
                             self.log_error(result)
-                elif event.button.id == "print":
-                    pass
+                        if event.button.id == "print":
+                            # On Windows
+                            try:
+                                import win32print
+                                win32print.SetDefaultPrinter(win32print.GetDefaultPrinter())
+                                file_path = os.path.join(f'Z:\\patients\\{patient[0]} {patient[1]} {patient[2]}\\', f'{selection}.png')
+                                os.startfile(file_path, 'print')
+                            except ImportError:
+                                print("win32print module not found. Ensure you have installed pypiwin32.")
+
                 elif event.button.id == "exit":
                     self.app.pop_screen()
         
