@@ -3,7 +3,6 @@ from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from dotenv import load_dotenv
 import os
 from datetime import date, time, timedelta, datetime
-#import openpyxl
 import time as tm
 from sys import platform
 from PIL import Image, ImageDraw, ImageFont

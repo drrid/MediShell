@@ -22,8 +22,6 @@ import time as tm
 if platform == 'win32':
     import ctypes
 
-
-
 from datetime import date, timedelta
 
 import shutil
