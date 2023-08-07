@@ -1,6 +1,6 @@
 from textual.app import App
 from textual.screen import Screen, ModalScreen
-from textual.widgets import Static, Footer, Header, Input, DataTable, Button, RadioButton, RadioSet, SelectionList, TextLog, ProgressBar
+from textual.widgets import Static, Footer, Header, Input, DataTable, Button, RadioButton, RadioSet, SelectionList, RichLog, ProgressBar
 from textual.coordinate import Coordinate
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll, Grid
 from textual.reactive import reactive
@@ -13,6 +13,7 @@ import os
 from natsort import natsorted 
 import re
 from sys import platform
+from rich.text import Text
 
 import paramiko
 from dotenv import load_dotenv
@@ -60,7 +61,7 @@ class PrintExportScreen(ModalScreen):
             with Horizontal(id='progress-pane'):
                 yield(ProgressBar(id='progress', total=100))
             with Horizontal():
-                yield(TextLog(id='textlog', highlight=True, markup=True))
+                yield(RichLog(id='textlog', highlight=True, markup=True, wrap=True))
             with Horizontal(id='buttons'):
                 yield Button('export', id='export', variant='primary')
                 yield Button('print', id='print', variant='primary')
@@ -212,7 +213,7 @@ class PrintExportScreen(ModalScreen):
         return client
     
 
-    @work(exclusive=False)
+    @work(exclusive=False, thread=True)
     def slice(self, client, command):
         try:
             stdin, stdout, stderr = client.exec_command(command, get_pty=True)
@@ -230,7 +231,7 @@ class PrintExportScreen(ModalScreen):
             self.log_error(str(e))
 
 
-    @work(exclusive=False)
+    @work(exclusive=False, thread=True)
     def cleanup(self):
         try:
             client = self.connect_to_server()
@@ -385,7 +386,7 @@ class Calendar(Screen):
                                 Vertical(self.patient_widget,
                                         self.encounter_widget,
                                         Input(placeholder='Notes...', id='notes'), 
-                                        TextLog(id='feedback', highlight=True, markup=True),
+                                        RichLog(id='feedback', highlight=True, markup=True, wrap=True),
                                         id='tables'),
                                         self.calendar_widget,
                                 id='tables_cnt'),
@@ -475,12 +476,6 @@ class Calendar(Screen):
 
 
     def on_button_pressed(self, event: Button.Pressed):
-        try:
-            cursor = self.patient_widget.cursor_coordinate
-            patient_id = self.patient_widget.get_cell_at(Coordinate(cursor.row, 0))
-        except Exception as e:
-            self.log_error("Error occurred while fetching patient ID: " + str(e))
-            return
 
         try:
             first_name = self.query_one('#fname').value.capitalize()
@@ -521,7 +516,9 @@ class Calendar(Screen):
         try:
             if event.control.id == 'addpatient':
                 self.add_patient(first_name, last_name, parsed_phone, parsed_dob)
-            elif event.control.id == 'updatepatient':
+            elif event.control.id == 'updatepatient':         
+                cursor = self.patient_widget.cursor_coordinate
+                patient_id = self.patient_widget.get_cell_at(Coordinate(cursor.row, 0))
                 self.update_patient(patient_id, first_name, last_name, parsed_phone, parsed_dob)
             else:
                 self.log_error("Invalid button event.")
@@ -680,13 +677,15 @@ class Calendar(Screen):
             current_column = self.patient_widget.cursor_column
             self.patient_widget.clear()
             patients = iter(conf.select_all_starts_with())
+
             self.row_index_id = {}
-            for index, patient in enumerate(patients):
-                patient_id = patient[0]
-                self.patient_widget.add_row(*patient, key=patient_id)
-                self.row_index_id.update({patient_id: index})
-                # self.log_feedback()
-            self.patient_widget.move_cursor(row=current_row, column=current_column)
+            if patients is not None:
+                for index, patient in enumerate(patients):
+                    patient_id = patient[0]
+                    self.patient_widget.add_row(*patient, key=patient_id)
+                    self.row_index_id.update({patient_id: index})
+                    # self.log_feedback()
+                self.patient_widget.move_cursor(row=current_row, column=current_column)
         except Exception as e:
             self.log_error("Error occurred in show_patients: " + str(e))
 
@@ -720,12 +719,20 @@ class Calendar(Screen):
             # Retrieve the column names from the schedule iterator
             column_names = next(schedule)
 
+                    # Get today's date in the format you've described
+            today_str = dt.datetime.today().strftime("%d %b %y")
+            today_str = today_str.lstrip("0")
+
             # Iterate over the column names and add them to the table
             for i, column_name in enumerate(column_names):
                 if i == 0:
                     table.add_column(column_name, width=5)
                 else:
-                    table.add_column(column_name, width=18)
+                    # Check if the column name is today and apply special styling if so
+                    if column_name.split(" ", 1)[1] == today_str:
+                        table.add_column(Text(column_name, style='bold #FFAA1D'), width=18)  # Modify as needed for your GUI library
+                    else:
+                        table.add_column(column_name, width=18)
 
             for row in schedule:
                 table.add_row(*row, height=2)
@@ -741,7 +748,7 @@ class Calendar(Screen):
         try:
             if message.control.id == 'enc_table':
                 self.query_one('#notes').focus()
-                self.query_one('#notes').value = ''
+                self.query_one('#notes').value = self.encounter_widget.get_cell_at(self.encounter_widget.cursor_coordinate)
             if message.control.id == 'cal_table':
                 self.selected_calendar()
                 self.selected_calendar()
@@ -801,6 +808,10 @@ class Calendar(Screen):
             elif message.control.id == 'enc_table':
                 self.encounter_widget.cursor_type = 'cell'
                 self.calendar_widget.move_cursor(row=0, column=0)
+                self.encounter_widget.cursor_type = 'cell'
+                
+                self.query_one('#notes').value = self.encounter_widget.get_cell_at(self.encounter_widget.cursor_coordinate)
+                self.query_one('#notes').focus()
         except Exception as e:
             self.log_error(e)
             

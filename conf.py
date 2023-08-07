@@ -6,6 +6,7 @@ from datetime import date, time, timedelta, datetime
 import time as tm
 from sys import platform
 from PIL import Image, ImageDraw, ImageFont
+from rich.text import Text
 
 load_dotenv()
 password = os.getenv('DB_PASSWORD')
@@ -21,7 +22,7 @@ Base = declarative_base()
 Session = sessionmaker(bind=engine)
 
 
-# Patient Class -----------------------------------------------------------------------------------------------------------
+# # Prescription Class -----------------------------------------------------------------------------------------------------------
 class PrescriptionFile(Base):
     __tablename__ = "prescription_file"
     id = Column(Integer(), primary_key=True, autoincrement=True)
@@ -62,7 +63,8 @@ class Patient(Base):
     date_of_birth = Column(Date())
     encounters = relationship("Encounter")
 
-    def get_owed_money(self):
+    @property
+    def owed_money(self):
         with Session() as session:
             try:
                 # Get the total treatment cost for the patient
@@ -83,8 +85,8 @@ class Patient(Base):
                 return None
 
     def __repr__(self):
-        owed_money = self.get_owed_money()
-        return f'{self.patient_id},{self.first_name},{self.last_name},{self.date_of_birth},{self.phone},{owed_money}'
+        # owed_money = self.get_owed_money()
+        return f'{self.patient_id},{self.first_name},{self.last_name},{self.date_of_birth},{self.phone},{self.owed_money}'
         # return f'{self.patient_id},{self.first_name},{self.last_name},{self.date_of_birth},{self.phone}'
 #---------------------------------------------------------------------------------------------------------------------------
 
@@ -157,7 +159,7 @@ def select_all_starts_with(**kwargs):
     with Session() as session:
         try:
             filters = [getattr(Patient, key).startswith(value) for key, value in kwargs.items()]
-            return [(str(r.patient_id), str(r.first_name), str(r.last_name), str(r.date_of_birth), str(r.phone), str(r.get_owed_money())) for r in session.query(Patient).filter(*filters)]
+            return [(str(r.patient_id), str(r.first_name), str(r.last_name), str(r.date_of_birth), str(r.phone), str(r.owed_money)) for r in session.query(Patient).filter(*filters)]
         except Exception as e:
             print(e)
 
@@ -266,12 +268,12 @@ def generate_schedule(week_index):
         day_index = (encounter.rdv.date() - start_date).days
 
         if today == encounter.rdv.date():
-            encounter_map[(time_slot_index, day_index)] = f"[bold yellow]{pat.first_name} {pat.last_name}"
+            encounter_map[(time_slot_index, day_index)] = Text(f'{pat.first_name} {pat.last_name}', style='bold #FFAA1D')
             if '%' in encounter.note:
-                encounter_map[(time_slot_index, day_index)] = f"[bold yellow underline]{pat.first_name} {pat.last_name}"
+                encounter_map[(time_slot_index, day_index)] = Text(f"{pat.first_name} {pat.last_name}", style='bold underline #FFAA1D')
                 
         elif '%' in encounter.note:
-            encounter_map[(time_slot_index, day_index)] = f"[bold underline]{pat.first_name} {pat.last_name}"
+            encounter_map[(time_slot_index, day_index)] = Text(f"{pat.first_name} {pat.last_name}", style='bold underline')
         else:
             encounter_map[(time_slot_index, day_index)] = f"{pat.first_name} {pat.last_name}"
 
