@@ -15,6 +15,10 @@ import re
 from sys import platform
 from rich.text import Text
 
+import subprocess
+import select
+
+
 import paramiko
 from dotenv import load_dotenv
 from textual.worker import Worker, get_current_worker
@@ -71,7 +75,6 @@ class PrintExportScreen(ModalScreen):
     def on_mount(self):
         self.show_selectionlist()
 
-
     def show_selectionlist(self):
         try:
             self.selectionlist.clear_options()
@@ -80,12 +83,13 @@ class PrintExportScreen(ModalScreen):
             if selected_radio == 'models':
                 calendar_screen: Calendar = self.app.SCREENS.get('calendar')
                 patient = calendar_screen.patient_widget.get_row_at(calendar_screen.patient_widget.cursor_coordinate.row)
-                self.selectionlist.border_title = f'{patient[0]} {patient[1]} {patient[2]}'
+                patient_long_id = f'{patient[0]} {patient[1]} {patient[2]}'
+                self.selectionlist.border_title = patient_long_id
 
                 if platform == 'darwin':
-                    pt_dir = f'/Volumes/mediaserver/patients/{patient[0]} {patient[1]} {patient[2]}'
+                    pt_dir = f'/Volumes/mediaserver/patients/{patient_long_id}'
                 else:
-                    pt_dir = f'Z:\\patients\\{patient[0]} {patient[1]} {patient[2]}'
+                    pt_dir = f'Z:\\patients\\{patient_long_id}'
 
                 self.nb_aligners = []
                 scanned_files = os.listdir(pt_dir)
@@ -153,6 +157,7 @@ class PrintExportScreen(ModalScreen):
                         self.query_one('#progress').update(progress=0)
                         pt_name = f"'/home/tarek/zfsmedia2/patients/{patient[0]} {patient[1]} {patient[2]}/{len(selected_files)}-{timestamp}-{i}.sl1'"
 
+
                         if platform == 'darwin':
                             pt_name_final = os.path.join(f"/Volumes/mediaserver/patients/{patient[0]} {patient[1]} {patient[2]}/", f'{len(selected_files)}-{timestamp}-{i}.pm3')
                         else:
@@ -161,6 +166,7 @@ class PrintExportScreen(ModalScreen):
                         self.to_print.append(pt_name_final)
 
                         chunck_joined = "' '".join(chunk)
+
                         prusa_cmd = "prusa-slicer --export-sla --merge --load config.ini --output"
                         uvtools_cmd =  '/home/tarek/uvtools/UVtoolsCmd convert'
                         command = f"{prusa_cmd} {pt_name} '{chunck_joined}' && {uvtools_cmd} {pt_name} pm3"
@@ -328,6 +334,7 @@ class PrintExportScreen(ModalScreen):
         except Exception as e:
             self.query_one('#textlog').write(f"An error occurred while deleting files: {str(e)}")
 
+
     def copy_file_to_flash_drive(self, source_file_path, destination_flash_drive_name, new_file_name):
         try:
             # Check if the source file exists
@@ -353,6 +360,8 @@ class PrintExportScreen(ModalScreen):
             self.query_one('#textlog').write("File copied successfully.")
         except Exception as e:
             self.query_one('#textlog').write(f"An error occurred: {str(e)}")
+
+
 
 # Calendar Screen --------------------------------------------------------------------------------------------------------------------------------------------------
 class Calendar(Screen):
