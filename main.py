@@ -261,15 +261,15 @@ class PrintExportScreen(ModalScreen):
 
 
     def print_pt(self, patient, nb_models, link):
-        with open(f'C:\\Users\\tarek\\OneDrive\\Documents\\bt\\{patient[0]}.txt', 'w') as pt_file:
+        with open(f'C:\\Users\\user\\Documents\\patient-barcode\\{patient[0]}.txt', 'w') as pt_file:
             pt_file.write('ptID,ptFName,ptLName,UL,nbModels' + '\n')
             pt_file.write(f'{patient[0]},{patient[1]},{patient[2]},Lower,{nb_models}')
 
-        with open(f'C:\\Users\\tarek\\OneDrive\\Documents\\bt\\{patient[0]}2.txt', 'w') as pt_file:
+        with open(f'C:\\Users\\user\\Documents\\patient-barcode\\{patient[0]}2.txt', 'w') as pt_file:
             pt_file.write('ptID,ptFName,ptLName,UL,nbModels' + '\n')
             pt_file.write(f'{patient[0]},{patient[1]},{patient[2]},Upper,{nb_models}')
 
-        with open(f'C:\\Users\\tarek\\OneDrive\\Documents\\bt2\\{patient[0]}.txt', 'w') as pt_file:
+        with open(f'C:\\Users\\user\\Documents\\patient-barcode-clinic\\{patient[0]}.txt', 'w') as pt_file:
             pt_file.write('ptFName,ptLName,link' + '\n')
             pt_file.write(f'{patient[1]},{patient[2]},{link}')
 
@@ -422,7 +422,7 @@ class Calendar(Screen):
 
         asyncio.create_task(self.update_calendar_periodically())
 
-        PT_CLMN = [['ID', 3], ['First Name', 13], ['Last Name', 13], ['Date of Birth', 12], ['Phone', 10], ['Owed', 10]]
+        PT_CLMN = [['ID', 3], ['First Name', 10], ['Last Name', 10], ['Date of Birth', 10], ['Phone', 9], ['Owed', 7]]
         for c in PT_CLMN:
             self.patient_widget.add_column(f'{c[0]}', width=c[1])
 
@@ -446,11 +446,16 @@ class Calendar(Screen):
                 conf.update_encounter(encounter_id, note=str(input_to_modify))
                 self.encounter_widget.update_cell_at(cursor, input_to_modify)
             if cursor.column == 3:
-                conf.update_encounter(encounter_id, payment=int(input_to_modify))
+                if self.query_one('#notes').value.endswith('m'):
+                    input_to_modify = float(input_to_modify[0:-1]) * 10000
+                # self.log_error(float(input_to_modify[0:-1]) * 10000)
+                conf.update_encounter(encounter_id, payment=float(input_to_modify))
                 self.encounter_widget.update_cell_at(cursor, input_to_modify)
                 self.show_patients()
             if cursor.column == 4:
-                conf.update_encounter(encounter_id, treatment_cost=int(input_to_modify))
+                if self.query_one('#notes').value.endswith('m'):
+                    input_to_modify = float(input_to_modify[0:-1]) * 10000
+                conf.update_encounter(encounter_id, treatment_cost=float(input_to_modify))
                 self.encounter_widget.update_cell_at(cursor, input_to_modify)
                 self.show_patients()
         except Exception as e:
@@ -626,16 +631,20 @@ class Calendar(Screen):
             try:
                 patient = conf.Patient(first_name=first_name, last_name=last_name, phone=phone, date_of_birth=date_of_birth)
                 patient_id = conf.save_to_db(patient)
-                self.log_feedback("Patient added successfully.")
-                self.show_patients()
-                self.calendar_widget.move_cursor(row=0, column=0)
-                row_index = self.row_index_id.get(str(patient_id))
-                self.patient_widget.move_cursor(row=row_index)
-                foldername = f"Z:\\patients\\{patient_id} {patient.first_name} {patient.last_name}"
-                isExist = os.path.exists(f'Z:\\patients\\{foldername}')
-                self.show_encounters()
-                if not isExist:
-                    os.makedirs(foldername)
+                if patient_id == None:
+                    self.log_error("patient id can't be none")
+                    return
+                else:
+                    self.show_patients()
+                    self.calendar_widget.move_cursor(row=0, column=0)
+                    row_index = self.row_index_id.get(str(patient_id))
+                    self.patient_widget.move_cursor(row=row_index)
+                    foldername = f"Z:\\patients\\{patient_id} {patient.first_name} {patient.last_name}"
+                    isExist = os.path.exists(f'Z:\\patients\\{foldername}')
+                    self.show_encounters()
+                    if not isExist:
+                        os.makedirs(foldername)
+                    self.log_feedback("Patient added successfully.")
 
             except Exception as e:
                 self.log_error(f"Error adding patient: {e}")
@@ -691,7 +700,7 @@ class Calendar(Screen):
             if patients is not None:
                 for index, patient in enumerate(patients):
                     patient_id = patient[0]
-                    self.patient_widget.add_row(*patient, key=patient_id)
+                    self.patient_widget.add_row(*patient, key=patient_id, height=2)
                     self.row_index_id.update({patient_id: index})
                     # self.log_feedback()
                 self.patient_widget.move_cursor(row=current_row, column=current_column)
@@ -739,9 +748,9 @@ class Calendar(Screen):
                 else:
                     # Check if the column name is today and apply special styling if so
                     if column_name.split(" ", 1)[1] == today_str:
-                        table.add_column(Text(column_name, style='bold #FFAA1D'), width=18)  # Modify as needed for your GUI library
+                        table.add_column(Text(column_name, style='bold #FFAA1D'), width=14)  # Modify as needed for your GUI library
                     else:
-                        table.add_column(column_name, width=18)
+                        table.add_column(column_name, width=14)
 
             for row in schedule:
                 table.add_row(*row, height=2)
@@ -757,7 +766,11 @@ class Calendar(Screen):
         try:
             if message.control.id == 'enc_table':
                 self.query_one('#notes').focus()
-                self.query_one('#notes').value = self.encounter_widget.get_cell_at(self.encounter_widget.cursor_coordinate)
+                if self.encounter_widget.cursor_coordinate.column == 2:
+                    self.query_one('#notes').value = self.encounter_widget.get_cell_at(self.encounter_widget.cursor_coordinate)
+                else:
+                    self.query_one('#notes').value = ''
+
             if message.control.id == 'cal_table':
                 self.selected_calendar()
                 self.selected_calendar()
@@ -770,7 +783,7 @@ class Calendar(Screen):
     #     if message.control.id == 'cal_table':
     #         self.update_tooltip()
 
-        
+
     def selected_calendar(self):
         try:
             cursor = self.calendar_widget.cursor_coordinate
@@ -815,9 +828,11 @@ class Calendar(Screen):
                     self.calendar_widget.move_cursor(row=0, column=0)
                 self.show_encounters()
             elif message.control.id == 'enc_table':
+                self.query_one('#notes').value = ''
                 self.encounter_widget.cursor_type = 'cell'
                 self.calendar_widget.move_cursor(row=0, column=0)
                 self.encounter_widget.cursor_type = 'cell'
+                
                 
                 self.query_one('#notes').value = self.encounter_widget.get_cell_at(self.encounter_widget.cursor_coordinate)
                 self.query_one('#notes').focus()
